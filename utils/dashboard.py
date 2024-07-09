@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.express as px
 
 def create_dashboard(data):
-    df = pd.DataFrame(data, columns=['category', 'subcategory', 'amount'])
+    df = pd.DataFrame(data, columns=['project_id', 'date', 'category', 'subcategory', 'amount', 'description'])
     
     # 총 예산
     total_budget = df['amount'].sum()

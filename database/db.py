@@ -7,13 +7,22 @@ def create_connection(db_file):
 def create_table(conn):
     c = conn.cursor()
     c.execute('''
+        CREATE TABLE IF NOT EXISTS projects (
+            id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL,
+            description TEXT
+        )
+    ''')
+    c.execute('''
         CREATE TABLE IF NOT EXISTS budget (
             id INTEGER PRIMARY KEY,
+            project_id INTEGER,
             date TEXT,
             category TEXT,
             subcategory TEXT,
             amount REAL,
-            description TEXT
+            description TEXT,
+            FOREIGN KEY (project_id) REFERENCES projects (id)
         )
     ''')
     conn.commit()
@@ -21,14 +30,14 @@ def create_table(conn):
 def insert_data(conn, data):
     c = conn.cursor()
     c.executemany('''
-        INSERT INTO budget (date, category, subcategory, amount, description)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO budget (project_id, date, category, subcategory, amount, description)
+        VALUES (?, ?, ?, ?, ?, ?)
     ''', data)
     conn.commit()
 
 def fetch_all_data(conn):
     c = conn.cursor()
-    c.execute('SELECT * FROM budget')
+    c.execute('SELECT * FROM projects')
     rows = c.fetchall()
     return rows
 

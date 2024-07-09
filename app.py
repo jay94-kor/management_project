@@ -18,42 +18,22 @@ async def main():
     # 사용자 테이블 생성
     create_user_table()
 
-    # 로그인 / 회원가입
-    if 'user' not in st.session_state:
-        choice = st.radio("로그인 또는 회원가입", ["로그인", "회원가입"])
-        if choice == "로그인":
-            username = st.text_input("사용자명")
-            password = st.text_input("비밀번호", type="password")
-            if st.button("로그인"):
-                if login(username, password):
-                    st.session_state.user = username
-                    st.success("로그인 성공!")
-                else:
-                    st.error("로그인 실패. 사용자명과 비밀번호를 확인해주세요.")
-        else:
-            username = st.text_input("새 사용자명")
-            password = st.text_input("새 비밀번호", type="password")
-            if st.button("회원가입"):
-                if register(username, password):
-                    st.success("회원가입 성공! 로그인해주세요.")
-                else:
-                    st.error("회원가입 실패. 다른 사용자명을 선택해주세요.")
-    else:
-        st.write(f"안녕하세요, {st.session_state.user}님!")
+    # 데이터베이스 연결
+    conn = create_connection("budget.db")
+    create_table(conn)
 
-        # 데이터베이스 연결
-        conn = create_connection("budget.db")
-        create_table(conn)
+    # 프로젝트 목록 표시
+    st.subheader("프로젝트 목록")
+    projects = fetch_all_data(conn)
+    project_names = [project[1] for project in projects]  # 프로젝트 이름 추출
+    selected_project = st.selectbox("프로젝트를 선택하세요", project_names)
 
-        # 관리자 기능
-        if is_admin(st.session_state.user):
-            st.subheader("관리자 기능")
-            user_to_grant = st.text_input("승인 권한을 부여할 사용자명")
-            if st.button("승인 권한 부여"):
-                if grant_approval_rights(user_to_grant):
-                    st.success(f"{user_to_grant}에게 승인 권한이 부여되었습니다.")
-                else:
-                    st.error("승인 권한 부여에 실패했습니다.")
+    if selected_project:
+        st.write(f"선택된 프로젝트: {selected_project}")
+
+        # 프로젝트 세부 정보 및 대시보드 표시
+        project_data = [project for project in projects if project[1] == selected_project]
+        create_dashboard(project_data)
 
         # 파일 업로드 및 데이터 분류
         uploaded_file = st.file_uploader("엑셀 파일을 업로드하세요", type="xlsx")
@@ -74,12 +54,18 @@ async def main():
             else:
                 st.error("스프레드시트 ID를 찾을 수 없습니다.")
 
-        # 대시보드 생성
-        st.subheader("대시보드")
-        create_dashboard(fetch_all_data(conn))
+        # 관리자 기능
+        if 'user' in st.session_state and is_admin(st.session_state.user):
+            st.subheader("관리자 기능")
+            user_to_grant = st.text_input("승인 권한을 부여할 사용자명")
+            if st.button("승인 권한 부여"):
+                if grant_approval_rights(user_to_grant):
+                    st.success(f"{user_to_grant}에게 승인 권한이 부여되었습니다.")
+                else:
+                    st.error("승인 권한 부여에 실패했습니다.")
 
         # 로그아웃
-        if st.button("로그아웃"):
+        if 'user' in st.session_state and st.button("로그아웃"):
             del st.session_state.user
             st.experimental_rerun()
 
