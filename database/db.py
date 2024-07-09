@@ -26,6 +26,7 @@ def create_table(conn):
             subcategory TEXT,
             amount REAL,
             description TEXT,
+            status TEXT DEFAULT 'pending',
             FOREIGN KEY (project_id) REFERENCES projects (id)
         )
     ''')
@@ -55,6 +56,22 @@ def fetch_all_data(conn):
     c.execute('SELECT * FROM projects')
     rows = c.fetchall()
     return rows
+
+def fetch_pending_expenses(conn, project_id):
+    c = conn.cursor()
+    c.execute('SELECT * FROM budget WHERE project_id=? AND status="pending"', (project_id,))
+    rows = c.fetchall()
+    return rows
+
+def approve_expense(conn, expense_id):
+    c = conn.cursor()
+    c.execute('UPDATE budget SET status="approved" WHERE id=?', (expense_id,))
+    conn.commit()
+
+def reject_expense(conn, expense_id):
+    c = conn.cursor()
+    c.execute('UPDATE budget SET status="rejected" WHERE id=?', (expense_id,))
+    conn.commit()
 
 def update_data(conn, data):
     c = conn.cursor()

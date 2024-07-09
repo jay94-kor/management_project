@@ -29,24 +29,46 @@ async def main():
     st.subheader("프로젝트 목록")
     projects = await get_project_list(folder_id)
     project_names = [f"{project['code']}_{project['name']}" for project in projects]
-    selected_project = st.selectbox("프로젝트를 선택하세요", project_names)
 
-    if selected_project:
-        st.write(f"선택된 프로젝트: {selected_project}")
+    for project in projects:
+        with st.card(f"{project['code']}_{project['name']}"):
+            st.write(f"프로젝트 코드: {project['code']}")
+            st.write(f"프로젝트 이름: {project['name']}")
+            if st.button(f"지출 추가하기 - {project['code']}"):
+                st.session_state.selected_project = project
+                st.experimental_rerun()
 
-        # 프로젝트 세부 정보 및 대시보드 표시
-        project_data = [project for project in projects if f"{project['code']}_{project['name']}" == selected_project]
-        create_dashboard(project_data)
+    if 'selected_project' in st.session_state:
+        selected_project = st.session_state.selected_project
+        st.write(f"선택된 프로젝트: {selected_project['code']}_{selected_project['name']}")
 
-        # 파일 업로드 및 데이터 분류
-        uploaded_file = st.file_uploader("엑셀 파일을 업로드하세요", type="xlsx")
-        if uploaded_file is not None:
-            data = pd.read_excel(uploaded_file)
-            classified_data = classify_data(data.to_json())
-            st.write("분류된 데이터:", classified_data)
-            if st.button("데이터베이스에 저장"):
-                insert_data(conn, classified_data)
-                st.success("데이터가 성공적으로 저장되었습니다.")
+        # 지출 추가 폼
+        st.subheader("지출 추가")
+        date = st.date_input("날짜")
+        category = st.text_input("카테고리")
+        subcategory = st.text_input("서브카테고리")
+        amount = st.number_input("금액", min_value=0.0)
+        description = st.text_area("설명")
+
+        if st.button("지출 추가"):
+            new_expense = (selected_project['id'], date, category, subcategory, amount, description)
+            insert_data(conn, [new_expense])
+            st.success("지출이 성공적으로 추가되었습니다.")
+            del st.session_state.selected_project
+            st.experimental_rerun()
+
+        # 승인 프로세스
+        if 'user' in st.session_state and is_admin(st.session_state.user):
+            st.subheader("승인 대기 중인 지출")
+            pending_expenses = fetch_pending_expenses(conn, selected_project['id'])
+            for expense in pending_expenses:
+                st.write(expense)
+                if st.button(f"승인 - {expense['id']}"):
+                    approve_expense(conn, expense['id'])
+                    st.success("지출이 승인되었습니다.")
+                if st.button(f"반려 - {expense['id']}"):
+                    reject_expense(conn, expense['id'])
+                    st.error("지출이 반려되었습니다.")
 
         # Google Sheets 동기화
         if st.button('Google Sheets와 동기화'):
