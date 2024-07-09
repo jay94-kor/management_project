@@ -1,7 +1,4 @@
 streamlit
 pandas
-streamlit-option-menu
-sqlalchemy
-openai
-python-dotenv
 openpyxl
+sqlite3
