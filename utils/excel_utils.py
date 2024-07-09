@@ -17,7 +17,12 @@ def load_excel_data(uploaded_file, sheet_name=None):
     # 실제 데이터프레임의 열 수에 맞게 열 이름 조정
     df.columns = columns[:len(df.columns)]
     
-    # 필요한 열만 선택
+    # 누락된 열 추가
+    for col in columns:
+        if col not in df.columns:
+            df[col] = None
+    
+    # 필요한 열만 선택하고 순서 조정
     df = df[columns]
     
     return df
