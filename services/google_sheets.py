@@ -1,7 +1,12 @@
-
 from googleapiclient.discovery import build
 from google.oauth2 import service_account
+import streamlit as st
 import pandas as pd
+
+# Streamlit 시크릿에서 API 키 및 구글 시트 ID 가져오기
+SPREADSHEET_ID = st.secrets["google_sheets"]["spreadsheet_id"]
+CLIENT_ID = st.secrets["google_sheets"]["client_id"]
+CLIENT_SECRET = st.secrets["google_sheets"]["client_secret"]
 
 # 구글 시트 API 설정
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
@@ -9,8 +14,6 @@ SERVICE_ACCOUNT_FILE = 'credentials/service_account.json'
 
 credentials = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
 service = build('sheets', 'v4', credentials=credentials)
-
-SPREADSHEET_ID = 'your_google_sheets_id'
 
 def read_sheet_data(sheet_range):
     """Google Sheets에서 데이터를 읽어옵니다."""

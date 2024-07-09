@@ -3,24 +3,18 @@ import pandas as pd
 from utils.openai_utils import classify_data
 from database.db import create_connection, create_table, save_to_db, fetch_all_data
 import plotly.express as px
-from googleapiclient.discovery import build
-from google.oauth2 import service_account
+from services.google_drive import monitor_and_convert
+from services.google_sheets import read_sheet_data, sync_data_with_db
 
-# 구글 시트 API 설정
-SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
-SERVICE_ACCOUNT_FILE = 'credentials/service_account.json'
-SPREADSHEET_ID = 'your-spreadsheet-id'
+# 파일 업로드를 Google Drive 폴더로 자동으로 처리
+spreadsheet_id = monitor_and_convert()
 
-credentials = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
-service = build('sheets', 'v4', credentials=credentials)
-
-# 파일 업로드
-uploaded_file = st.file_uploader("Upload your Excel file", type=["xlsx"])
-
-if uploaded_file:
-    df = pd.read_excel(uploaded_file)
-    st.write("Uploaded Data:")
-    st.write(df)
+if spreadsheet_id:
+    # Google Sheets 데이터 읽기
+    sheet_data = read_sheet_data('Sheet1!A1:C')
+    df = pd.DataFrame(sheet_data[1:], columns=sheet_data[0])
+    
+    # 데이터 분류 및 저장
     data = df.to_dict(orient='records')
     classified_data = classify_data(data)
     conn = create_connection()
@@ -45,27 +39,6 @@ if uploaded_file:
 
     st.write(f"Average Remaining Budget: {average_remaining_budget}")
 
-# 시트 데이터 읽기
-def read_sheet_data(sheet_range):
-    result = service.spreadsheets().values().get(spreadsheetId=SPREADSHEET_ID, range=sheet_range).execute()
-    return result.get('values', [])
-
-# 시트 데이터 쓰기
-def write_sheet_data(sheet_range, values):
-    body = {
-        'values': values
-    }
-    result = service.spreadsheets().values().update(
-        spreadsheetId=SPREADSHEET_ID, range=sheet_range,
-        valueInputOption="RAW", body=body).execute()
-    return result
-
-# 데이터 동기화
-def sync_data():
-    conn = create_connection()
-    db_data = fetch_all_data(conn)
-    write_sheet_data('Sheet1!A1', db_data)
-    st.write("Data synchronized with Google Sheets")
-
+# Google Sheets와 데이터베이스 간의 데이터 동기화 버튼
 if st.button('Sync with Google Sheets'):
-    sync_data()
+    sync_data_with_db(fetch_all_data)
