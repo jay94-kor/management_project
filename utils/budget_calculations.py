@@ -56,5 +56,5 @@ def handle_over_budget(project_name, over_budget_amount):
     conn.close()
     return f"이관 가능한 예산 부족. {over_budget_amount} 초과 지출 남음"
 
-def calculate_remaining_amount(allocated, used):
-    return allocated - used
+def calculate_remaining_amount(allocated_amount, settled_amount):
+    return allocated_amount - settled_amount
