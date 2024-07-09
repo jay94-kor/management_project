@@ -1,7 +1,7 @@
 import asyncio
 import logging
+from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
-from google.oauth2 import service_account
 import streamlit as st
 import json
 import openpyxl
@@ -18,9 +18,8 @@ logger = logging.getLogger(__name__)
 SCOPES = ['https://www.googleapis.com/auth/drive']
 SERVICE_ACCOUNT_INFO = json.loads(st.secrets["gcp_service_account"]["service_account_info"])
 
-credentials = service_account.Credentials.from_service_account_info(
-    SERVICE_ACCOUNT_INFO, scopes=SCOPES)
-service = build('drive', 'v3', credentials=credentials)
+creds = Credentials.from_authorized_user_file('token.json', ['https://www.googleapis.com/auth/drive.readonly'])
+service = build('drive', 'v3', credentials=creds, cache_discovery=False)
 
 async def list_files_in_folder(folder_id):
     query = f"'{folder_id}' in parents and mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'"

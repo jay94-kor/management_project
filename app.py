@@ -14,6 +14,15 @@ from utils.account_management import create_user_table, login, register, is_admi
 from utils.dashboard import create_dashboard
 import plotly.graph_objects as go
 
+@st.cache_data
+def process_data_in_chunks(data, chunk_size=1000):
+    result = []
+    for i in range(0, len(data), chunk_size):
+        chunk = data[i:i+chunk_size]
+        # 청크 처리 로직
+        result.extend(processed_chunk)
+    return result
+
 def main():
     st.title("예산 관리 애플리케이션")
 
@@ -196,4 +205,5 @@ def check_budget_warnings(project):
     return warnings
 
 if __name__ == "__main__":
+    main()
     main()
