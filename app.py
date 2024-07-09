@@ -3,11 +3,12 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import streamlit as st
+st.cache_data.clear()
+st.cache_resource.clear()
 import pandas as pd
 from services.google_drive import get_project_list
 from services.google_sheets import read_sheet_data, sync_data_with_db
-from database.db import create_connection, create_table, fetch_all_data, insert_data, update_data, delete_data, fetch_pending_expenses, approve_expense, reject_expense
-from database.db import get_approved_expenses, insert_expense
+from database.db import create_connection, create_table, fetch_all_data, insert_data, update_data, delete_data, fetch_pending_expenses, approve_expense, reject_expense, get_approved_expenses, insert_expense
 from utils.openai_utils import classify_data
 from utils.account_management import create_user_table, login, register, is_admin, grant_approval_rights
 from utils.dashboard import create_dashboard
