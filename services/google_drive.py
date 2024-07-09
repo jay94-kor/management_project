@@ -4,10 +4,11 @@ import io
 from googleapiclient.http import MediaIoBaseDownload
 import json
 import os
+import streamlit as st
 
 # Google Drive API 설정
 SCOPES = ['https://www.googleapis.com/auth/drive']
-SERVICE_ACCOUNT_INFO = json.loads(os.environ.get('GCP_SERVICE_ACCOUNT'))
+SERVICE_ACCOUNT_INFO = json.loads(st.secrets["gcp_service_account"]["service_account_info"])
 
 credentials = service_account.Credentials.from_service_account_info(
     SERVICE_ACCOUNT_INFO, scopes=SCOPES)
