@@ -1,10 +1,12 @@
 import sqlite3
 
 def create_connection(db_file):
+    """ 데이터베이스 연결을 생성합니다. """
     conn = sqlite3.connect(db_file)
     return conn
 
-def create_table(conn):
+def create_tables(conn):
+    """ 데이터베이스에 필요한 테이블을 생성합니다. """
     c = conn.cursor()
     
     # 프로젝트 테이블 생성
@@ -42,30 +44,18 @@ def create_table(conn):
     
     conn.commit()
 
-def insert_data(conn, data):
-    c = conn.cursor()
-    c.executemany('''
-        INSERT INTO budget (project_id, date, category, subcategory, amount, description)
-        VALUES (?, ?, ?, ?, ?, ?)
-    ''', data)
-    conn.commit()
+def main():
+    database = "budget.db"
+    
+    # 데이터베이스 연결 생성
+    conn = create_connection(database)
+    
+    if conn is not None:
+        # 테이블 생성
+        create_tables(conn)
+        print("데이터베이스와 테이블이 성공적으로 생성되었습니다.")
+    else:
+        print("데이터베이스 연결을 생성할 수 없습니다.")
 
-def fetch_all_data(conn):
-    c = conn.cursor()
-    c.execute('SELECT * FROM projects')
-    rows = c.fetchall()
-    return rows
-
-def update_data(conn, data):
-    c = conn.cursor()
-    c.execute('''
-        UPDATE budget
-        SET date = ?, category = ?, subcategory = ?, amount = ?, description = ?
-        WHERE id = ?
-    ''', data)
-    conn.commit()
-
-def delete_data(conn, id):
-    c = conn.cursor()
-    c.execute('DELETE FROM budget WHERE id = ?', (id,))
-    conn.commit()
+if __name__ == '__main__':
+    main()
