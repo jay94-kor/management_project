@@ -9,8 +9,11 @@ from services.google_sheets import read_sheet_data, sync_data_with_db
 # Streamlit 시크릿에서 Google Drive 폴더 ID 가져오기
 FOLDER_ID = st.secrets["google_drive"]["folder_id"]
 
+# 데이터베이스 파일 경로
+DB_FILE = "management_project.db"
+
 # 데이터베이스 연결 및 테이블 생성
-conn = create_connection()
+conn = create_connection(DB_FILE)
 create_table(conn)
 
 st.title("Management Project Dashboard")

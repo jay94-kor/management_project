@@ -1,12 +1,12 @@
 import sqlite3
 from sqlite3 import Error
 
-def create_connection():
-    """데이터베이스에 연결을 생성합니다."""
+def create_connection(db_file):
+    """지정된 데이터베이스 파일에 연결을 생성합니다."""
     conn = None
     try:
-        conn = sqlite3.connect(':memory:')  # 메모리 내에 데이터베이스 생성
-        print("Connection to SQLite DB successful")
+        conn = sqlite3.connect(db_file)
+        print(f"Connection to SQLite DB '{db_file}' successful")
     except Error as e:
         print(f"The error '{e}' occurred")
     return conn
