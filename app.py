@@ -12,6 +12,10 @@ FOLDER_ID = st.secrets["google_drive"]["folder_id"]
 # 파일 업로드를 Google Drive 폴더로 자동으로 처리
 spreadsheet_id = monitor_and_convert(FOLDER_ID)
 
+# 데이터베이스 연결 및 테이블 생성
+conn = create_connection()
+create_table(conn)
+
 if spreadsheet_id:
     # Google Sheets 데이터 읽기
     sheet_data = read_sheet_data(spreadsheet_id, 'Sheet1!A1:C')
@@ -20,8 +24,6 @@ if spreadsheet_id:
     # 데이터 분류 및 저장
     data = df.to_dict(orient='records')
     classified_data = classify_data(data)
-    conn = create_connection()
-    create_table(conn)
     save_to_db(conn, classified_data)
     st.write("Data classified and saved to the database")
 
@@ -44,5 +46,4 @@ if spreadsheet_id:
 
 # Google Sheets와 데이터베이스 간의 데이터 동기화 버튼
 if st.button('Sync with Google Sheets'):
-    conn = create_connection()
     sync_data_with_db(spreadsheet_id, lambda: fetch_all_data(conn))
