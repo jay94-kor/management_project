@@ -1,5 +1,5 @@
 import streamlit as st
-from services.project_service import get_projects, add_expense, fetch_pending_expenses
+from services.project_service import get_projects, add_expense, fetch_pending_expenses, approve_expense, reject_expense
 from services.google_sheets_service import sync_data_with_sheets
 from utils.dashboard import create_budget_dashboard, create_projects_comparison_dashboard
 from utils.account_management import login, register, is_admin, grant_approval_rights
@@ -54,7 +54,7 @@ def show_main_app():
     elif menu == "프로젝트 비교":
         show_projects_comparison(projects)
     elif menu == "관리자 기능":
-        show_admin_functions()
+        show_admin_functions(projects)
 
     if st.sidebar.button("로그아웃"):
         del st.session_state.user
@@ -122,7 +122,7 @@ def show_projects_comparison(projects):
     st.subheader("프로젝트 간 예산 비교")
     create_projects_comparison_dashboard(projects)
 
-def show_admin_functions():
+def show_admin_functions(projects):
     if is_admin(st.session_state.user):
         st.subheader("관리자 기능")
         user_to_grant = st.text_input("승인 권한을 부여할 사용자명")
