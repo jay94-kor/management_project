@@ -71,19 +71,30 @@ uploaded_file = st.file_uploader("엑셀 파일을 업로드 하세요", type="x
 if uploaded_file:
     df = load_excel_data(uploaded_file)
     
+    # 데이터프레임의 열 이름 출력
+    st.write("엑셀 파일의 열 이름:")
+    st.write(df.columns.tolist())
+    
     # 고정 칼럼과 자유 작성 칼럼 구분
     fixed_columns = ['project_name', 'category', 'item', 'description', 'allocated_amount']
+    available_columns = [col for col in df.columns if col in fixed_columns]
     editable_columns = [col for col in df.columns if col not in fixed_columns]
 
     # 고정 칼럼 데이터프레임
-    fixed_df = df[fixed_columns]
-    st.write("고정된 데이터:")
-    st.dataframe(fixed_df)
+    if available_columns:
+        fixed_df = df[available_columns]
+        st.write("고정된 데이터:")
+        st.dataframe(fixed_df)
+    else:
+        st.warning("고정 열을 찾을 수 없습니다. 엑셀 파일의 구조를 확인해주세요.")
 
     # 자유 작성 칼럼 데이터프레임
-    editable_df = df[editable_columns]
-    st.write("자유롭게 작성할 데이터:")
-    edited_df = st.experimental_data_editor(editable_df)
+    if editable_columns:
+        editable_df = df[editable_columns]
+        st.write("자유롭게 작성할 데이터:")
+        edited_df = st.experimental_data_editor(editable_df)
+    else:
+        st.warning("편집 가능한 열을 찾을 수 없습니다.")
 
     # 사용자 정보 입력
     st.write("지출 요청자 정보 입력:")
