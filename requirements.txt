@@ -1,6 +1,7 @@
 streamlit
 pandas
-SQLAlchemy
 streamlit-option-menu
+sqlalchemy
 openai
+python-dotenv
 openpyxl
