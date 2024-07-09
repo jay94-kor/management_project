@@ -1,19 +1,16 @@
 from googleapiclient.discovery import build
 from google.oauth2 import service_account
-import streamlit as st
-import os
 import io
-import pandas as pd
 from googleapiclient.http import MediaIoBaseDownload
+import json
+import os
 
-# Streamlit 시크릿에서 API 키 및 구글 드라이브 폴더 ID 가져오기
-FOLDER_ID = st.secrets["google_drive"]["folder_id"]
-
-# 구글 드라이브 API 설정
+# Google Drive API 설정
 SCOPES = ['https://www.googleapis.com/auth/drive']
-SERVICE_ACCOUNT_FILE = 'credentials/service_account.json'
+SERVICE_ACCOUNT_INFO = json.loads(os.environ.get('GCP_SERVICE_ACCOUNT'))
 
-credentials = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+credentials = service_account.Credentials.from_service_account_info(
+    SERVICE_ACCOUNT_INFO, scopes=SCOPES)
 service = build('drive', 'v3', credentials=credentials)
 
 def list_files_in_folder(folder_id):
@@ -46,15 +43,14 @@ def convert_xlsx_to_sheet(file_id):
     ).execute()
     return file.get('id')
 
-def monitor_and_convert():
+def monitor_and_convert(folder_id):
     """Google Drive 폴더를 모니터링하고 새로운 엑셀 파일을 Google Sheets로 변환합니다."""
-    files = list_files_in_folder(FOLDER_ID)
+    files = list_files_in_folder(folder_id)
     if files:
         for file in files:
             print(f"Found file: {file['name']} (ID: {file['id']})")
             spreadsheet_id = convert_xlsx_to_sheet(file['id'])
             print(f"Converted to Google Sheets: {spreadsheet_id}")
-            # Google Sheets ID를 반환하거나 후속 처리를 추가합니다.
             return spreadsheet_id
     else:
         print("No files found.")

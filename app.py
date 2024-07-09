@@ -6,12 +6,15 @@ import plotly.express as px
 from services.google_drive import monitor_and_convert
 from services.google_sheets import read_sheet_data, sync_data_with_db
 
+# Streamlit 시크릿에서 Google Drive 폴더 ID 가져오기
+FOLDER_ID = st.secrets["google_drive"]["folder_id"]
+
 # 파일 업로드를 Google Drive 폴더로 자동으로 처리
-spreadsheet_id = monitor_and_convert()
+spreadsheet_id = monitor_and_convert(FOLDER_ID)
 
 if spreadsheet_id:
     # Google Sheets 데이터 읽기
-    sheet_data = read_sheet_data('Sheet1!A1:C')
+    sheet_data = read_sheet_data(spreadsheet_id, 'Sheet1!A1:C')
     df = pd.DataFrame(sheet_data[1:], columns=sheet_data[0])
     
     # 데이터 분류 및 저장
@@ -41,4 +44,4 @@ if spreadsheet_id:
 
 # Google Sheets와 데이터베이스 간의 데이터 동기화 버튼
 if st.button('Sync with Google Sheets'):
-    sync_data_with_db(fetch_all_data)
+    sync_data_with_db(spreadsheet_id, fetch_all_data)
