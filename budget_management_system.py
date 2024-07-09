@@ -42,8 +42,8 @@ st.title('예산 관리 자동화 시스템')
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 
-if not st.session_state.logged_in:
-    st.write("로그인")
+def show_login():
+    st.write("관리자 로그인")
     username = st.text_input("사용자 이름")
     password = st.text_input("비밀번호", type="password")
     if st.button("로그인"):
@@ -52,53 +52,61 @@ if not st.session_state.logged_in:
             st.session_state.logged_in = True
             st.session_state.user = user
             st.success("로그인 성공!")
+            st.experimental_rerun()
         else:
             st.error("사용자 이름 또는 비밀번호가 잘못되었습니다.")
-else:
+
+# 상단 우측에 관리자 로그인 버튼
+if st.session_state.logged_in:
     st.write(f"환영합니다, {st.session_state.user[1]}")
+    if st.button("로그아웃"):
+        st.session_state.logged_in = False
+        st.experimental_rerun()
+else:
+    st.sidebar.button("관리자 로그인", on_click=show_login)
 
-    # 파일 업로드
-    uploaded_file = st.file_uploader("엑셀 파일을 업로드 하세요", type="xlsx")
+# 파일 업로드
+uploaded_file = st.file_uploader("엑셀 파일을 업로드 하세요", type="xlsx")
 
-    if uploaded_file:
-        df = load_excel_data(uploaded_file)
+if uploaded_file:
+    df = load_excel_data(uploaded_file)
+    
+    # 고정 칼럼과 자유 작성 칼럼 구분
+    fixed_columns = ['project_name', 'category', 'item', 'description', 'allocated_amount']
+    editable_columns = [col for col in df.columns if col not in fixed_columns]
+
+    # 고정 칼럼 데이터프레임
+    fixed_df = df[fixed_columns]
+    st.write("고정된 데이터:")
+    st.dataframe(fixed_df)
+
+    # 자유 작성 칼럼 데이터프레임
+    editable_df = df[editable_columns]
+    st.write("자유롭게 작성할 데이터:")
+    edited_df = st.experimental_data_editor(editable_df)
+
+    # 사용자 정보 입력
+    st.write("지출 요청자 정보 입력:")
+    requester_name = st.text_input("이름")
+    requester_email = st.text_input("이메일")
+    requester_phone = st.text_input("전화번호")
+
+    # 데이터 저장 버튼
+    if st.button('데이터베이스에 저장'):
+        for index, row in edited_df.iterrows():
+            df.at[index, 'used_amount'] = row['used_amount']
+            df.at[index, 'company_name'] = row['company_name']
+            df.at[index, 'remaining_amount'] = calculate_remaining_amount(df.at[index, 'allocated_amount'], row['used_amount'])
         
-        # 고정 칼럼과 자유 작성 칼럼 구분
-        fixed_columns = ['project_name', 'category', 'item', 'description', 'allocated_amount']
-        editable_columns = [col for col in df.columns if col not in fixed_columns]
-
-        # 고정 칼럼 데이터프레임
-        fixed_df = df[fixed_columns]
-        st.write("고정된 데이터:")
-        st.dataframe(fixed_df)
-
-        # 자유 작성 칼럼 데이터프레임
-        editable_df = df[editable_columns]
-        st.write("자유롭게 작성할 데이터:")
-        edited_df = st.experimental_data_editor(editable_df)
-
-        # 사용자 정보 입력
-        st.write("지출 요청자 정보 입력:")
-        requester_name = st.text_input("이름")
-        requester_email = st.text_input("이메일")
-        requester_phone = st.text_input("전화번호")
-
-        # 데이터 저장 버튼
-        if st.button('데이터베이스에 저장'):
-            for index, row in edited_df.iterrows():
-                df.at[index, 'used_amount'] = row['used_amount']
-                df.at[index, 'company_name'] = row['company_name']
-                df.at[index, 'remaining_amount'] = calculate_remaining_amount(df.at[index, 'allocated_amount'], row['used_amount'])
-            
-            insert_data_to_db(df)
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            for index, row in edited_df.iterrows():
-                cursor.execute('INSERT INTO payments (budget_item_id, amount, date, requester_name, requester_email, requester_phone) VALUES (?, ?, date("now"), ?, ?, ?)',
-                               (index + 1, row['used_amount'], requester_name, requester_email, requester_phone))
-            conn.commit()
-            conn.close()
-            st.success('데이터가 성공적으로 입력되었습니다.')
+        insert_data_to_db(df)
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        for index, row in edited_df.iterrows():
+            cursor.execute('INSERT INTO payments (budget_item_id, amount, date, requester_name, requester_email, requester_phone) VALUES (?, ?, date("now"), ?, ?, ?)',
+                           (index + 1, row['used_amount'], requester_name, requester_email, requester_phone))
+        conn.commit()
+        conn.close()
+        st.success('데이터가 성공적으로 입력되었습니다.')
 
     # 초과 지출 처리
     def handle_over_budget(project_name, amount):
@@ -137,19 +145,20 @@ else:
     st.dataframe(df_db)
 
     # 수정 요청 및 승인 기능 구현
-    st.write("수정 요청 및 승인")
-    conn = get_db_connection()
-    modification_requests = pd.read_sql_query("SELECT * FROM modification_requests WHERE status = 'Pending'", conn)
-    conn.close()
-    if not modification_requests.empty:
-        st.write("승인 대기 중인 수정 요청:")
-        st.dataframe(modification_requests)
-        selected_request_id = st.selectbox("승인할 수정 요청을 선택하세요", modification_requests['id'].tolist())
-        approver_name = st.text_input("승인자 이름")
-        if st.button('승인'):
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            cursor.execute("UPDATE modification_requests SET status = 'Approved', approval_date = date('now'), approver_name = ? WHERE id = ?", (approver_name, selected_request_id))
-            conn.commit()
-            conn.close()
-            st.success("수정 요청이 승인되었습니다.")
+    if st.session_state.logged_in:
+        st.write("수정 요청 및 승인")
+        conn = get_db_connection()
+        modification_requests = pd.read_sql_query("SELECT * FROM modification_requests WHERE status = 'Pending'", conn)
+        conn.close()
+        if not modification_requests.empty:
+            st.write("승인 대기 중인 수정 요청:")
+            st.dataframe(modification_requests)
+            selected_request_id = st.selectbox("승인할 수정 요청을 선택하세요", modification_requests['id'].tolist())
+            approver_name = st.text_input("승인자 이름")
+            if st.button('승인'):
+                conn = get_db_connection()
+                cursor = conn.cursor()
+                cursor.execute("UPDATE modification_requests SET status = 'Approved', approval_date = date('now'), approver_name = ? WHERE id = ?", (approver_name, selected_request_id))
+                conn.commit()
+                conn.close()
+                st.success("수정 요청이 승인되었습니다.")
