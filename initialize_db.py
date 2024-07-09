@@ -56,13 +56,15 @@ def initialize_db():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT,
+            username TEXT UNIQUE,
             password TEXT
         )
     ''')
     
-    # Insert a default user for testing
-    cursor.execute('INSERT INTO users (username, password) VALUES (?, ?)', ('admin', 'admin'))
+    # Insert a default user for testing (if not already existing)
+    cursor.execute('SELECT * FROM users WHERE username = ?', ('admin',))
+    if cursor.fetchone() is None:
+        cursor.execute('INSERT INTO users (username, password) VALUES (?, ?)', ('admin', 'admin'))
 
     # Create table for modification requests
     cursor.execute('''
