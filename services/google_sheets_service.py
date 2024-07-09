@@ -37,18 +37,14 @@ def write_sheet_data(spreadsheet_id, sheet_range, values):
         print(f"Error writing Google Sheets data: {e}")
         return None
 
-def sync_data_with_db(spreadsheet_id, fetch_db_data):
-    """데이터베이스와 Google Sheets 간의 데이터를 동기화합니다."""
-    # 데이터베이스에서 데이터 가져오기
-    db_data = fetch_db_data()
-    if not db_data:
-        return
-    
-    # 데이터 형식을 Google Sheets에 맞게 변환
-    values = [list(row) for row in db_data]
-    
-    # Google Sheets에 데이터 쓰기
-    write_sheet_data(spreadsheet_id, 'Sheet1!A1', values)
+def sync_data_with_sheets(spreadsheet_id, fetch_data_func):
+    client = get_gspread_client()
+    sheet = client.open_by_key(spreadsheet_id).sheet1
+    data = fetch_data_func()
+    sheet.clear()
+    sheet.append_row(["Date", "Category", "Subcategory", "Amount", "Description"])
+    for row in data:
+        sheet.append_row(row)
 
 def get_gspread_client():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -61,12 +57,3 @@ def read_sheet_data(spreadsheet_id, range_name):
     sheet = client.open_by_key(spreadsheet_id).worksheet(range_name)
     data = sheet.get_all_records()
     return data
-
-def sync_data_with_db(spreadsheet_id, fetch_data_func):
-    client = get_gspread_client()
-    sheet = client.open_by_key(spreadsheet_id).sheet1
-    data = fetch_data_func()
-    sheet.clear()
-    sheet.append_row(["Date", "Category", "Subcategory", "Amount", "Description"])
-    for row in data:
-        sheet.append_row(row)
