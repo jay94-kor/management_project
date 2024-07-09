@@ -33,8 +33,8 @@ async def list_files_in_folder(folder_id):
         logger.error(f"Error listing files: {e}")
         return []
 
-async def get_project_list(folder_id):
-    files = await list_files_in_folder(folder_id)
+def get_project_list(folder_id):
+    files = list_files_in_folder(folder_id)
     projects = []
     for file in files:
         file_id = file['id']
@@ -78,3 +78,11 @@ async def get_project_list(folder_id):
             'contract_end_date': contract_end_date
         })
     return projects
+
+def list_files_in_folder(folder_id):
+    try:
+        results = service.files().list(q=f"'{folder_id}' in parents", pageSize=10, fields="files(id, name)").execute()
+        return results.get('files', [])
+    except Exception as e:
+        print(f"Error listing files: {e}")
+        return []
