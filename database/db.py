@@ -47,3 +47,15 @@ def reject_expense_db(expense_id):
     c.execute("UPDATE expenses SET status = 'rejected' WHERE id = ?", (expense_id,))
     conn.commit()
     conn.close()
+
+
+def get_approved_expenses(project_id, category, item):
+    conn = create_connection()
+    c = conn.cursor()
+    c.execute('''
+        SELECT SUM(amount) FROM expenses
+        WHERE project_id = ? AND category = ? AND item = ? AND status = 'approved'
+    ''', (project_id, category, item))
+    result = c.fetchone()[0]
+    conn.close()
+    return result if result is not None else 0
