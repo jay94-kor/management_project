@@ -167,14 +167,14 @@ def analyze_excel(df):
     df_str = df.to_string()
     
     response = client.chat.completions.create(
-        model="gpt-4o",
+        model="gpt-4",
         messages=[
             {"role": "system", "content": "당신은 복잡한 엑셀 데이터를 분석하고 구조화하는 전문가입니다."},
             {"role": "user", "content": f"""
-            다음 엑셀 데이터를 분석하고 '대분류', '항목명', '단가', '개수1', '단위1', '개수2', '단위2', '배정예산' 열을 가진 JSON 배열 형식으로 변환해주세요.
+            다음 엑셀 데이터를 분석하고 '대분류', '항목명', '단가', '개수1', '단위1', '개수2', '단위2', '배정예산' 열을 가진 구조화된 데이터로 변환해주세요.
             이 엑셀 파일의 구조는 다음과 같습니다:
             1. 상단에는 제목이나 기본 정보가 있을 수 있습니다.
-            2. 실제 예산 정보는 파일의 하단 부분에 있습니다.
+             2. 실제 예산 정보는 파일의 하단 부분에 있습니다.
             3. 병합된 셀이 많으며, 트리 구조로 되어 있을 수 있습니다.
 
             다음 지침을 따라주세요:
@@ -184,51 +184,44 @@ def analyze_excel(df):
             4. 숫자 데이터는 정수형으로 변환해주세요.
             5. 열 이름이 정확히 일치하지 않을 수 있으므로, 의미가 유사한 열을 찾아 매핑해주세요.
             6. 데이터의 계층 구조를 파악하여 '대분류'와 '항목명'을 적절히 채워주세요.
-            7. JSON 배열 형식으로만 응답해주세요. 다른 설명은 필요 없습니다.
+            7. 각 항목을 새로운 줄로 구분하여 응답해주세요. 다른 설명은 필요 없습니다.
 
             {df_str}
             """}
         ]
     )
     
-    try:
-        content = response.choices[0].message.content.strip()
-        # JSON 시작과 끝 부분 찾기
-        start = content.find('[')
-        end = content.rfind(']') + 1
-        if start != -1 and end != -1:
-            json_str = content[start:end]
-            # JSON 문자열 정제
-            json_str = re.sub(r'(\w+):', r'"\1":', json_str)  # 키를 따옴표로 감싸기
-            json_str = json_str.replace("'", '"')  # 작은따옴표를 큰따옴표로 변경
-            structured_data = json.loads(json_str)
-            return pd.DataFrame(structured_data)
-        else:
-            raise ValueError("유효한 JSON 데이터를 찾을 수 없습니다.")
-    except json.JSONDecodeError as e:
-        st.error(f"GPT 응답을 JSON으로 파싱하는 데 실패했습니다: {str(e)}")
-        st.text("GPT 응답:")
-        st.text(content)
-        # JSON 형식이 아닌 경우 수동으로 파싱 시도
-        try:
-            lines = content.split('\n')
-            data = []
-            for line in lines:
-                if ':' in line:
-                    key, value = line.split(':', 1)
-                    data.append({key.strip(): value.strip()})
-            return pd.DataFrame(data)
-        except Exception as manual_parse_error:
-            st.error(f"수동 파싱도 실패했습니다: {str(manual_parse_error)}")
-    except ValueError as e:
-        st.error(str(e))
-        st.text("GPT 응답:")
-        st.text(content)
-    except Exception as e:
-        st.error(f"예상치 못한 오류가 발생했습니다: {str(e)}")
-        st.text("GPT 응답:")
-        st.text(content)
-    return None
+    content = response.choices[0].message.content.strip()
+    
+    # 데이터 파싱 및 구조화
+    data = []
+    current_item = {}
+    for line in content.split('\n'):
+        if line.strip():
+            key, value = line.split(':', 1)
+            key = key.strip().strip('"')
+            value = value.strip().strip('"').replace(',', '')
+            
+            if key == '대분류':
+                if current_item:
+                    data.append(current_item)
+                current_item = {'대분류': value}
+            else:
+                current_item[key] = value
+    
+    if current_item:
+        data.append(current_item)
+    
+    # 데이터프레임 생성
+    df_result = pd.DataFrame(data)
+    
+    # 숫자 데이터 변환
+    numeric_columns = ['단가', '개수1', '개수2', '배정예산']
+    for col in numeric_columns:
+        if col in df_result.columns:
+            df_result[col] = pd.to_numeric(df_result[col], errors='coerce')
+    
+    return df_result
 
 def upload_excel():
     st.subheader("엑셀 파일 업로드")
