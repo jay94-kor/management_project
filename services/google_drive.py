@@ -4,7 +4,7 @@ import os
 from googleapiclient.discovery import build
 from google.oauth2 import service_account
 import io
-from googleapiclient.http import MediaIoBaseDownload
+from googleapiclient.http import MediaIoBaseDownload, MediaFileUpload
 
 # Google Drive API 설정
 SCOPES = ['https://www.googleapis.com/auth/drive']
@@ -30,6 +30,16 @@ def download_file(file_id, file_name):
     while done is False:
         status, done = downloader.next_chunk()
     return file_name
+
+def upload_file_to_drive(file_name, folder_id):
+    """파일을 Google Drive에 업로드합니다."""
+    file_metadata = {
+        'name': file_name,
+        'parents': [folder_id]
+    }
+    media = MediaFileUpload(file_name, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    file = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+    return file.get('id')
 
 def convert_xlsx_to_sheet(file_id):
     """엑셀 파일을 Google Sheets로 변환하고 스프레드시트 ID를 반환합니다."""
