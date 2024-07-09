@@ -90,16 +90,16 @@ def budget_input():
     # 배정예산 계산
     edited_df['배정예산'] = (edited_df['단가'] * edited_df['개수1'] * edited_df['개수2']).astype(int)
     
-    # 지출희망금액 열 추가
-    for col in ['지출희망금액1', '지출희망금액2', '지출희망금액3']:
+    # 협력사별지출금액 열 추가
+    for col in ['협력사별지출금액_1', '협력사별지출금액_2', '협력사별지출금액_3']:
         if col not in edited_df.columns:
             edited_df[col] = 0
     
     # 잔액 계산
     edited_df['잔액'] = (edited_df['배정예산'] - 
-                         edited_df['지출희망금액1'].fillna(0) - 
-                         edited_df['지출희망금액2'].fillna(0) - 
-                         edited_df['지출희망금액3'].fillna(0)).astype(int)
+                         edited_df['협력사별지출금액_1'].fillna(0) - 
+                         edited_df['협력사별지출금액_2'].fillna(0) - 
+                         edited_df['협력사별지출금액_3'].fillna(0)).astype(int)
 
     if st.button("저장"):
         # 기존 데이터프레임 업데이트
@@ -125,9 +125,9 @@ def budget_input():
             "단위2": st.column_config.TextColumn(required=True, width="small"),
             "배정예산": st.column_config.NumberColumn(required=True, format="₩%d", width="medium", disabled=True),
             "잔액": st.column_config.NumberColumn(required=True, format="₩%d", width="medium", disabled=True),
-            "지출희망금액1": st.column_config.NumberColumn(min_value=0, format="₩%d", width="medium"),
-            "지출희망금액2": st.column_config.NumberColumn(min_value=0, format="��%d", width="medium"),
-            "지출희망금액3": st.column_config.NumberColumn(min_value=0, format="₩%d", width="medium"),
+            "협력사별지출금액_1": st.column_config.NumberColumn(min_value=0, format="₩%d", width="medium"),
+            "협력사별지출금액_2": st.column_config.NumberColumn(min_value=0, format="₩%d", width="medium"),
+            "협력사별지출금액_3": st.column_config.NumberColumn(min_value=0, format="₩%d", width="medium"),
         },
         hide_index=True,
         use_container_width=True,
@@ -150,16 +150,16 @@ def budget_input():
             valid_items = df[df['대분류'] == selected_category]['항목명'].dropna().unique().tolist()
             selected_item = st.selectbox("항목 선택", options=valid_items)
             
-            expense_amount = st.number_input("지출 희망 금액", min_value=0, step=1, value=0)
+            expense_amount = st.number_input("지출 금액", min_value=0, step=1, value=0)
             partner = st.text_input("협력사")
             
             if st.form_submit_button("지출 승인 요청"):
                 item_index = df[(df['대분류'] == selected_category) & (df['항목명'] == selected_item)].index[0]
                 if expense_amount <= df.loc[item_index, '잔액']:
-                    # 빈 지출희망금액 열 찾기
+                    # 빈 협력사별지출금액 열 찾기
                     for i in range(1, 4):
-                        if pd.isna(df.loc[item_index, f'지출희망금액{i}']):
-                            df.loc[item_index, f'지출희망금액{i}'] = expense_amount
+                        if pd.isna(df.loc[item_index, f'협력사별지출금액_{i}']):
+                            df.loc[item_index, f'협력사별지출금액_{i}'] = expense_amount
                             break
                     else:
                         st.error("더 이상 지출을 추가할 수 없습니다.")
@@ -167,9 +167,9 @@ def budget_input():
                     
                     # 잔액 재계산
                     df.loc[item_index, '잔액'] = (df.loc[item_index, '배정예산'] - 
-                                                    df.loc[item_index, '지출희망금액1'].fillna(0) - 
-                                                    df.loc[item_index, '지출희망금액2'].fillna(0) - 
-                                                    df.loc[item_index, '지출희망금액3'].fillna(0)).astype(int)
+                                                    df.loc[item_index, '협력사별지출금액_1'].fillna(0) - 
+                                                    df.loc[item_index, '협력사별지출금액_2'].fillna(0) - 
+                                                    df.loc[item_index, '협력사별지출금액_3'].fillna(0)).astype(int)
                     
                     st.success("지출 승인 요청이 완료되었습니다.")
                 else:
@@ -225,16 +225,14 @@ def analyze_excel(df):
     df_str = df.to_string()
     
     # OpenAI API를 사용하여 데이터 분석
-    response = openai.ChatCompletion.create(
-        model="gpt-4o",
-        messages=[
-            {"role": "system", "content": "You are a helpful assistant that analyzes Excel data and converts it to a specific format."},
-            {"role": "user", "content": f"Analyze this Excel data and convert it to the format with columns: 대분류, 항목명, 단가, 개수1, 단위1, 개수2, 단위2, 배정예산. Here's the data:\n\n{df_str}"}
-        ]
+    response = openai.Completion.create(
+        model="text-davinci-003",
+        prompt=f"Analyze this Excel data and convert it to the format with columns: 대분류, 항목명, 단가, 개수1, 단위1, 개수2, 단위2, 배정예산. Here's the data:\n\n{df_str}",
+        max_tokens=1500
     )
     
     # API 응답에서 변환된 데이터 추출
-    converted_data = response.choices[0].message['content']
+    converted_data = response.choices[0].text.strip()
     
     # 변환된 데이터를 데이프레임으로 변환
     converted_df = pd.read_csv(BytesIO(converted_data.encode()), sep='\s+')
