@@ -167,14 +167,14 @@ def analyze_excel(df):
     df_str = df.to_string()
     
     response = client.chat.completions.create(
-        model="gpt-4o",
+        model="gpt-4",
         messages=[
             {"role": "system", "content": "당신은 엑셀 데이터를 분석하고 구조화하는 전문가입니다."},
             {"role": "user", "content": f"""
-            다음 엑셀 데이터를 분석하고 '대분류', '항목명', '단가', '개수1', '단위1', '개수2', '단위2', '배정예산' 열을 가진 JSON 형식으로 변환해주세요.
+            다음 엑셀 데이터를 분석하고 '대분류', '항목명', '단가', '개수1', '단위1', '개수2', '단위2', '배정예산' 열을 가진 JSON 배열 형식으로 변환해주세요.
             빈 셀이나 소계, 합계 행은 제외하고 실제 데이터만 포함해주세요.
             숫자 데이터는 정수형으로 변환해주세요.
-            JSON 형식으로만 응답해주세요.
+            JSON 배열 형식으로만 응답해주세요. 다른 설명은 필요 없습니다.
 
             {df_str}
             """}
@@ -182,11 +182,15 @@ def analyze_excel(df):
     )
     
     try:
-        structured_data = json.loads(response.choices[0].message.content)
+        response_text = response.choices[0].message.content
+        structured_data = clean_and_parse_json(response_text)
         return pd.DataFrame(structured_data)
-    except json.JSONDecodeError:
-        st.error("GPT 응답을 JSON으로 파싱하는 데 실패했습니다.")
+    except Exception as e:
+        st.error(f"GPT 응답을 처리하는 데 실패했습니다: {str(e)}")
+        st.text("GPT 응답:")
+        st.text(response_text)
         return None
+
 
 def upload_excel():
     st.subheader("엑셀 파일 업로드")
