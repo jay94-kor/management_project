@@ -174,7 +174,7 @@ def analyze_excel(df):
             다음 엑셀 데이터를 분석하고 '대분류', '항목명', '단가', '개수1', '단위1', '개수2', '단위2', '배정예산' 열을 가진 구조화된 데이터로 변환해주세요.
             이 엑셀 파일의 구조는 다음과 같습니다:
             1. 상단에는 제목이나 기본 정보가 있을 수 있습니다.
-             2. 실제 예산 정보는 파일의 하단 부분에 있습니다.
+            2. 실제 예산 정보는 파일의 하단 부분에 있습니다.
             3. 병합된 셀이 많으며, 트리 구조로 되어 있을 수 있습니다.
 
             다음 지침을 따라주세요:
@@ -197,17 +197,25 @@ def analyze_excel(df):
     data = []
     current_item = {}
     for line in content.split('\n'):
-        if line.strip():
-            key, value = line.split(':', 1)
-            key = key.strip().strip('"')
-            value = value.strip().strip('"').replace(',', '')
-            
-            if key == '대분류':
-                if current_item:
-                    data.append(current_item)
-                current_item = {'대분류': value}
+        line = line.strip()
+        if line:
+            parts = line.split(':', 1)
+            if len(parts) == 2:
+                key, value = parts
+                key = key.strip().strip('"')
+                value = value.strip().strip('"').replace(',', '')
+                
+                if key == '대분류':
+                    if current_item:
+                        data.append(current_item)
+                    current_item = {'대분류': value}
+                else:
+                    current_item[key] = value
             else:
-                current_item[key] = value
+                # 콜론이 없는 줄은 이전 키의 값의 연속으로 처리
+                if current_item:
+                    last_key = list(current_item.keys())[-1]
+                    current_item[last_key] += ' ' + line
     
     if current_item:
         data.append(current_item)
