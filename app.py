@@ -189,7 +189,7 @@ def analyze_excel(df):
     
     return converted_df
 
-def upload_excel()
+def upload_excel():
     st.subheader("엑셀 파일 업로드")
     
     uploaded_file = st.file_uploader("엑셀 파일을 선택하세요", type=["xlsx", "xls"])
