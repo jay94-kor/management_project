@@ -5,6 +5,8 @@ from utils.excel_utils import load_excel_data
 from utils.auth import login
 from utils.budget_calculations import calculate_remaining_amount, handle_over_budget
 from openai import OpenAI
+import json
+import ast
 
 # Streamlit 앱 레이아웃
 st.title('예산 관리 자동화 시스템')
@@ -60,15 +62,24 @@ if uploaded_file:
                     model="gpt-4o",  # GPT-4 대신 GPT-3.5-turbo 사용
                     messages=[
                         {"role": "system", "content": "당신은 데이터 분석 및 구조화 전문가입니다. 주어진 엑셀 데이터를 분석하고 DB 구조에 맞게 정리해주세요."},
-                        {"role": "user", "content": f"다음 엑셀 데이터 요약을 분석하고, 'budget_items' 테이블에 맞게 구조화해주세요. 테이블 구조는 다음과 같습니다: id, project_name, category, item, description, quantity, specification, input_rate, unit_price, amount, allocated_amount, budget_item, settled_amount, expected_unit_price, ordered_amount, difference, profit_rate, company_name, partner_registered, unregistered_reason, remarks, remaining_amount.\n\n엑셀 데이터 요약:\n{df_summary}"}
+                        {"role": "user", "content": f"다음 엑셀 데이터 요약을 분석하고, 'budget_items' 테이블에 맞게 구조화해주세요. 테이블 구조는 다음과 같습니다: id, project_name, category, item, description, quantity, specification, input_rate, unit_price, amount, allocated_amount, budget_item, settled_amount, expected_unit_price, ordered_amount, difference, profit_rate, company_name, partner_registered, unregistered_reason, remarks, remaining_amount. 결과를 유효한 JSON 형식으로 반환해주세요.\n\n엑셀 데이터 요약:\n{df_summary}"}
                     ],
-                    max_tokens=1000  # 토큰 수 제한
+                    max_tokens=3000
                 )
                 
-                structured_data = response.choices[0].message.content
-                return eval(structured_data)  # 문자열을 파이썬 객체로 변환
+                structured_data_str = response.choices[0].message.content
+                
+                # JSON 형식으로 파싱 시도
+                try:
+                    structured_data = json.loads(structured_data_str)
+                except json.JSONDecodeError:
+                    # JSON 파싱 실패 시 ast.literal_eval 사용
+                    structured_data = ast.literal_eval(structured_data_str)
+                
+                return structured_data
             except Exception as e:
                 st.error(f"OpenAI API 오류: {str(e)}")
+                st.error(f"API 응답: {structured_data_str}")
                 return None
 
         st.write("데이터 분석 및 구조화 중...")
