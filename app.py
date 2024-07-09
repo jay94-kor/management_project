@@ -50,28 +50,39 @@ if uploaded_file:
         df = load_excel_data(uploaded_file)
         
         def analyze_and_structure_data(df):
-            df_string = df.to_string()
+            # 데이터프레임 요약 정보 생성
+            df_summary = f"Columns: {', '.join(df.columns)}\n"
+            df_summary += f"Shape: {df.shape}\n"
+            df_summary += f"Sample data:\n{df.head().to_string()}"
             
-            response = client.chat.completions.create(
-                model="gpt-4",
-                messages=[
-                    {"role": "system", "content": "당신은 데이터 분석 및 구조화 전문가입니다. 주어진 엑셀 데이터를 분석하고 DB 구조에 맞게 정리해주세요."},
-                    {"role": "user", "content": f"다음 엑셀 데이터를 분석하고, 'budget_items' 테이블에 맞게 구조화해주세요. 테이블 구조는 다음과 같습니다: id, project_name, category, item, description, quantity, specification, input_rate, unit_price, amount, allocated_amount, budget_item, settled_amount, expected_unit_price, ordered_amount, difference, profit_rate, company_name, partner_registered, unregistered_reason, remarks, remaining_amount.\n\n엑셀 데이터:\n{df_string}"}
-                ]
-            )
-            
-            structured_data = response.choices[0].message.content
-            return eval(structured_data)  # 문자열을 파이썬 객체로 변환
+            try:
+                response = client.chat.completions.create(
+                    model="gpt-4o",  # GPT-4 대신 GPT-3.5-turbo 사용
+                    messages=[
+                        {"role": "system", "content": "당신은 데이터 분석 및 구조화 전문가입니다. 주어진 엑셀 데이터를 분석하고 DB 구조에 맞게 정리해주세요."},
+                        {"role": "user", "content": f"다음 엑셀 데이터 요약을 분석하고, 'budget_items' 테이블에 맞게 구조화해주세요. 테이블 구조는 다음과 같습니다: id, project_name, category, item, description, quantity, specification, input_rate, unit_price, amount, allocated_amount, budget_item, settled_amount, expected_unit_price, ordered_amount, difference, profit_rate, company_name, partner_registered, unregistered_reason, remarks, remaining_amount.\n\n엑셀 데이터 요약:\n{df_summary}"}
+                    ],
+                    max_tokens=1000  # 토큰 수 제한
+                )
+                
+                structured_data = response.choices[0].message.content
+                return eval(structured_data)  # 문자열을 파이썬 객체로 변환
+            except Exception as e:
+                st.error(f"OpenAI API 오류: {str(e)}")
+                return None
 
         st.write("데이터 분석 및 구조화 중...")
         structured_data = analyze_and_structure_data(df)
-        
-        st.write("구조화된 데이터:")
-        st.write(structured_data)
 
-        if st.button('데이터베이스에 저장'):
-            insert_data_to_db(structured_data)
-            st.success('데이터가 성공적으로 데이터베이스에 저장되었습니다.')
+        if structured_data is not None:
+            st.write("구조화된 데이터:")
+            st.write(structured_data)
+
+            if st.button('데이터베이스에 저장'):
+                insert_data_to_db(structured_data)
+                st.success('데이터가 성공적으로 데이터베이스에 저장되었습니다.')
+        else:
+            st.error("데이터 분석 및 구조화 중 오류가 발생했습니다.")
 
     # 데이터베이스에서 데이터 가져오기
     conn = get_db_connection()
