@@ -4,7 +4,6 @@ def initialize_db():
     conn = sqlite3.connect('budget_management.db')
     cursor = conn.cursor()
     
-    # Update the budget_items table to match the new schema
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS budget_items (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -30,7 +29,6 @@ def initialize_db():
         )
     ''')
 
-    # Ensure the companies and payments tables are created (if not already existing)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS companies (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -52,7 +50,6 @@ def initialize_db():
         )
     ''')
 
-    # Example user table for login purposes
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -61,12 +58,10 @@ def initialize_db():
         )
     ''')
     
-    # Insert a default user for testing (if not already existing)
     cursor.execute('SELECT * FROM users WHERE username = ?', ('admin',))
     if cursor.fetchone() is None:
         cursor.execute('INSERT INTO users (username, password) VALUES (?, ?)', ('admin', 'admin'))
 
-    # Create table for modification requests
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS modification_requests (
             id INTEGER PRIMARY KEY AUTOINCREMENT,

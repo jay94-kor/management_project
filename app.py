@@ -1,69 +1,9 @@
 import streamlit as st
 import pandas as pd
-import sqlite3
-
-# 데이터베이스 연결 함수
-def get_db_connection():
-    conn = sqlite3.connect('budget_management.db')
-    return conn
-
-# 엑셀 데이터 로드 함수
-def load_excel_data(uploaded_file):
-    df = pd.read_excel(uploaded_file, sheet_name='예산배정 및 정산서', header=4)
-    df.ffill(axis=0, inplace=True)
-    
-    # Rename columns to match database fields
-    df.columns = ['category', 'item', 'na1', 'description', 'quantity', 'specification', 'input_rate', 
-                  'unit_price', 'amount', 'allocated_amount', 'budget_item', 'settled_amount', 
-                  'expected_unit_price', 'ordered_amount', 'difference', 'profit_rate', 
-                  'company_name', 'partner_registered', 'unregistered_reason', 'remarks']
-    
-    relevant_columns = ['category', 'item', 'description', 'quantity', 'specification', 'input_rate', 
-                        'unit_price', 'amount', 'allocated_amount', 'budget_item', 'settled_amount', 
-                        'expected_unit_price', 'ordered_amount', 'difference', 'profit_rate', 
-                        'company_name', 'partner_registered', 'unregistered_reason', 'remarks']
-    df = df[relevant_columns]
-    
-    return df
-
-# 데이터베이스에 데이터 삽입 함수
-def insert_data_to_db(df):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    try:
-        for index, row in df.iterrows():
-            # 데이터베이스에 삽입할 열 이름과 값을 명시적으로 지정
-            columns = ', '.join(row.index)
-            placeholders = ', '.join(['?' for _ in row.index])
-            query = f'''
-                INSERT INTO budget_items (
-                    {columns}
-                ) VALUES ({placeholders})
-            '''
-            cursor.execute(query, tuple(row))
-        
-        conn.commit()
-        st.success('데이터가 성공적으로 입력되었습니다.')
-    except sqlite3.Error as e:
-        st.error(f'데이터베이스 오류: {e}')
-        st.write('삽입하려던 데이터:')
-        st.write(df)
-    finally:
-        conn.close()
-
-# 잔액 계산 함수
-def calculate_remaining_amount(allocated, used):
-    return allocated - used
-
-# 로그인 함수
-def login(username, password):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM users WHERE username = ? AND password = ?', (username, password))
-    user = cursor.fetchone()
-    conn.close()
-    return user
+from db.database import get_db_connection, insert_data_to_db
+from utils.excel_utils import load_excel_data
+from utils.auth import login
+from utils.budget_calculations import calculate_remaining_amount
 
 # Streamlit 앱 레이아웃
 st.title('예산 관리 자동화 시스템')
