@@ -36,7 +36,7 @@ async def main():
             st.write(f"### {project['code']}_{project['name']}")
             st.write(f"프로젝트 코드: {project['code']}")
             st.write(f"프로젝트 이름: {project['name']}")
-            if st.button(f"지출 추가하기 - {project['code']}", key=f"add_expense_{project['code']}"):
+            if st.button(f"지출 추가하기 - {project['code']}", key=f"add_expense_{project['code']}_{i}"):
                 st.session_state.selected_project = project
                 st.experimental_rerun()
 
