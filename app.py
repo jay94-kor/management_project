@@ -1,72 +1,78 @@
-import streamlit as st
+import os
+from io import BytesIO
+
 import pandas as pd
+import openpyxl
+import streamlit as st
 from streamlit_option_menu import option_menu
 from sqlalchemy import create_engine, text
-import openai
 from dotenv import load_dotenv
 
-import os
-from io import BytesIO  # BytesIO를 io 모듈에서 import
-import openpyxl
+import openai
 
-# 데이터베이스 연결 설정
+# Load environment variables from .env file
+load_dotenv()
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
+if not openai.api_key:
+    st.error("OpenAI API key not found. Please set it in the .env file.")
+
+# Database connection setup
 DATABASE = os.path.join(os.getcwd(), 'budget.db')
 engine = create_engine(f'sqlite:///{DATABASE}')
 
-# .env 파일에서 환경 변수 로드
-load_dotenv()
-
-# OpenAI API 키 설정
-openai.api_key = os.getenv("OPENAI_API_KEY")
-
 def create_tables():
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS budget_items (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    대분류 TEXT,
+                    항목명 TEXT,
+                    단가 INTEGER,
+                    개수1 INTEGER,
+                    단위1 TEXT,
+                    개수2 INTEGER,
+                    단위2 TEXT,
+                    배정예산 INTEGER
+                )
+            """))
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS expenses (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    budget_item_id INTEGER,
+                    지출금액 INTEGER,
+                    지출일자 DATE,
+                    협력사 TEXT,
+                    FOREIGN KEY (budget_item_id) REFERENCES budget_items (id)
+                )
+            """))
+            conn.commit()
+    except Exception as e:
+        st.error(f"An error occurred while creating tables: {e}")
+
+def get_existing_budget_data():
     with engine.connect() as conn:
-        conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS budget_items (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                대분류 TEXT,
-                항목명 TEXT,
-                단가 INTEGER,
-                개수1 INTEGER,
-                단위1 TEXT,
-                개수2 INTEGER,
-                단위2 TEXT,
-                배정예산 INTEGER
-            )
-        """))
-        conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS expenses (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                budget_item_id INTEGER,
-                지출금액 INTEGER,
-                지출일자 DATE,
-                협력사 TEXT,
-                FOREIGN KEY (budget_item_id) REFERENCES budget_items (id)
-            )
-        """))
-        conn.commit()
+        df = pd.read_sql_query(text("SELECT * FROM budget_items"), conn)
+    return df
+
+def update_database(df):
+    with engine.connect() as conn:
+        df.to_sql('budget_items', conn, if_exists='replace', index=False)
 
 def budget_input():
     st.subheader("예산 항목 입력")
     
-    # 데이터베이스에서 기존 데이터 불러오기
-    with engine.connect() as conn:
-        df = pd.read_sql_query(text("SELECT * FROM budget_items"), conn)
+    df = get_existing_budget_data()
     
     if df.empty:
         df = pd.DataFrame(columns=['대분류', '항목명', '단가', '개수1', '단위1', '개수2', '단위2'])
     
-    # 기존 대분류 목록
     existing_categories = list(df['대분류'].unique())
-    
-    # 새 대분류 입력
     new_category = st.text_input("새 대분류 이름 (기존 대분류 수정 또는 새로 추가)")
-    
-    # 대분류 선택 (기존 대분류 + 새로 입력한 대분류)
     all_categories = existing_categories + ([new_category] if new_category and new_category not in existing_categories else [])
     selected_category = st.selectbox("대분류 선택", options=all_categories)
     
-    # 선택된 대분류에 대한 항목 표시 및 편집
     category_df = df[df['대분류'] == selected_category] if selected_category in existing_categories else pd.DataFrame(columns=df.columns)
     
     edited_df = st.data_editor(
@@ -84,34 +90,15 @@ def budget_input():
         key=f"budget_editor_{selected_category}"
     )
     
-    # 대분류 열 추가
     edited_df['대분류'] = selected_category
-    
-    # 배정예산 계산
     edited_df['배정예산'] = (edited_df['단가'] * edited_df['개수1'] * edited_df['개수2']).astype(int)
     
-    # 협력사별지출금액 열 추가
-    for col in ['협력사별지출금액_1', '협력사별지출금액_2', '협력사별지출금액_3']:
-        if col not in edited_df.columns:
-            edited_df[col] = 0
-    
-    # 잔액 계산
-    edited_df['잔액'] = (edited_df['배정예산'] - 
-                         edited_df['협력사별지출금액_1'].fillna(0) - 
-                         edited_df['협력사별지출금액_2'].fillna(0) - 
-                         edited_df['협력사별지출금액_3'].fillna(0)).astype(int)
-
     if st.button("저장"):
-        # 기존 데이터프레임 업데이트
-        df = df[df['대분류'] != selected_category]  # 현재 대분류 데이터 제거
-        df = pd.concat([df, edited_df], ignore_index=True)  # 새로운 데이터 추가
-        
-        # 데이터베이스에 저장
-        with engine.connect() as conn:
-            df.to_sql('budget_items', conn, if_exists='replace', index=False)
+        df = df[df['대분류'] != selected_category]
+        df = pd.concat([df, edited_df], ignore_index=True)
+        update_database(df)
         st.success("데이터가 성공적으로 저장되었습니다.")
     
-    # 전체 예산 항목 표시
     st.subheader("전체 예산 항목")
     st.data_editor(
         df,
@@ -134,59 +121,13 @@ def budget_input():
         disabled=["배정예산", "잔액"],
         key="updated_budget_editor"
     )
-    
-    # 지출 추가 버튼
-    if st.button("지출 추가"):
-        st.session_state.show_expense_form = True
-    
-    # 지출 추가 폼
-    if 'show_expense_form' in st.session_state and st.session_state.show_expense_form:
-        with st.form("expense_form"):
-            # 대분류 선택 (빈 값이 아닌 경우만 포함)
-            valid_categories = df['대분류'].dropna().unique().tolist()
-            selected_category = st.selectbox("대분류 선택", options=valid_categories)
-            
-            # 선택된 대분류에 해당하는 항목명만 표시
-            valid_items = df[df['대분류'] == selected_category]['항목명'].dropna().unique().tolist()
-            selected_item = st.selectbox("항목 선택", options=valid_items)
-            
-            expense_amount = st.number_input("지출 금액", min_value=0, step=1, value=0)
-            partner = st.text_input("협력사")
-            
-            if st.form_submit_button("지출 승인 요청"):
-                item_index = df[(df['대분류'] == selected_category) & (df['항목명'] == selected_item)].index[0]
-                if expense_amount <= df.loc[item_index, '잔액']:
-                    # 빈 협력사별지출금액 열 찾기
-                    for i in range(1, 4):
-                        if pd.isna(df.loc[item_index, f'협력사별지출금액_{i}']):
-                            df.loc[item_index, f'협력사별지출금액_{i}'] = expense_amount
-                            break
-                    else:
-                        st.error("더 이상 지출을 추가할 수 없습니다.")
-                        return
-                    
-                    # 잔액 재계산
-                    df.loc[item_index, '잔액'] = (df.loc[item_index, '배정예산'] - 
-                                                    df.loc[item_index, '협력사별지출금액_1'].fillna(0) - 
-                                                    df.loc[item_index, '협력사별지출금액_2'].fillna(0) - 
-                                                    df.loc[item_index, '협력사별지출금액_3'].fillna(0)).astype(int)
-                    
-                    st.success("지출 승인 요청이 완료되었습니다.")
-                else:
-                    st.error("잔액이 부족합니다.")
-                
-                # 데이터베이스 업데이트
-                with engine.connect() as conn:
-                    df.to_sql('budget_items', conn, if_exists='replace', index=False)
 
 def add_expense():
     st.subheader("지출 추가")
     
-    # 예산 항목 불러오기
     with engine.connect() as conn:
         budget_items = pd.read_sql_query(text("SELECT * FROM budget_items"), conn)
     
-    # 사용자 입력
     selected_item = st.selectbox("항목 선택", options=budget_items['항목명'].tolist())
     expense_amount = st.number_input("지출 금액", min_value=0, step=1000)
     expense_date = st.date_input("지출 일자")
@@ -195,21 +136,22 @@ def add_expense():
     if st.button("지출 추가"):
         item_id = budget_items[budget_items['항목명'] == selected_item]['id'].values[0]
         
-        # 지출 추가
-        with engine.connect() as conn:
-            conn.execute(text("""
-                INSERT INTO expenses (budget_item_id, 지출금액, 지출일자, 협력사)
-                VALUES (:item_id, :amount, :date, :partner)
-            """), {"item_id": item_id, "amount": expense_amount, "date": expense_date, "partner": partner})
-            conn.commit()
-        
-        st.success("지출이 추가되었습니다.")
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("""
+                    INSERT INTO expenses (budget_item_id, 지출금액, 지출일자, 협력사)
+                    VALUES (:item_id, :amount, :date, :partner)
+                """), {"item_id": item_id, "amount": expense_amount, "date": expense_date, "partner": partner})
+                conn.commit()
+            
+            st.success("지출이 추가되었습니다.")
+        except Exception as e:
+            st.error(f"An error occurred while adding expense: {e}")
 
 def view_budget():
     st.subheader("예산 및 지출 현황")
     
     with engine.connect() as conn:
-        # 예산 항목과 총 지출액 조회
         df = pd.read_sql_query(text("""
             SELECT bi.*, COALESCE(SUM(e.지출금액), 0) as 총지출액,
                    bi.배정예산 - COALESCE(SUM(e.지출금액), 0) as 잔액
@@ -221,20 +163,16 @@ def view_budget():
     st.dataframe(df)
 
 def analyze_excel(df):
-    # 데이터프레임을 문자열로 변환
     df_str = df.to_string()
     
-    # OpenAI API를 사용하여 데이터 분석
     response = openai.Completion.create(
-        model="gpt-4o",
+        model="gpt-4",
         prompt=f"Analyze this Excel data and convert it to the format with columns: 대분류, 항목명, 단가, 개수1, 단위1, 개수2, 단위2, 배정예산. Here's the data:\n\n{df_str}",
         max_tokens=1500
     )
     
-    # API 응답에서 변환된 데이터 추출
     converted_data = response.choices[0].text.strip()
     
-    # 변환된 데이터를 데이프레임으로 변환
     converted_df = pd.read_csv(BytesIO(converted_data.encode()), sep='\s+')
     
     return converted_df
@@ -250,14 +188,17 @@ def upload_excel():
         st.dataframe(df)
         
         if st.button("데이터 분석 및 변환"):
-            converted_df = analyze_excel(df)
-            st.write("변환된 데이터:")
-            st.dataframe(converted_df)
-            
-            if st.button("데이터베이스에 저장"):
-                with engine.connect() as conn:
-                    converted_df.to_sql('budget_items', conn, if_exists='append', index=False)
-                st.success("데이터가 성공적으로 저장되었습니다.")
+            try:
+                converted_df = analyze_excel(df)
+                st.write("변환된 데이터:")
+                st.dataframe(converted_df)
+                
+                if st.button("데이터베이스에 저장"):
+                    with engine.connect() as conn:
+                        converted_df.to_sql('budget_items', conn, if_exists='append', index=False)
+                    st.success("데이터가 성공적으로 저장되었습니다.")
+            except Exception as e:
+                st.error(f"An error occurred during analysis: {e}")
 
 def main():
     create_tables()
