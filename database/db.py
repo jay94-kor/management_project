@@ -41,6 +41,19 @@ def create_table(conn):
         )
     ''')
     
+    # 지출 테이블 생성
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS expenses (
+            id INTEGER PRIMARY KEY,
+            project_id TEXT,
+            category TEXT,
+            item TEXT,
+            amount REAL,
+            description TEXT,
+            status TEXT
+        )
+    ''')
+    
     conn.commit()
 
 def insert_data(conn, data):
@@ -57,20 +70,25 @@ def fetch_all_data(conn):
     rows = c.fetchall()
     return rows
 
-def fetch_pending_expenses(conn, project_id):
+def fetch_pending_expenses(conn):
     c = conn.cursor()
-    c.execute('SELECT * FROM budget WHERE project_id=? AND status="pending"', (project_id,))
-    rows = c.fetchall()
-    return rows
+    c.execute('''
+        SELECT e.id, e.project_id, p.name as project_name, e.category, e.item, e.amount, e.description
+        FROM expenses e
+        JOIN projects p ON e.project_id = p.id
+        WHERE e.status = 'pending'
+    ''')
+    expenses = [dict(zip([column[0] for column in c.description], row)) for row in c.fetchall()]
+    return expenses
 
 def approve_expense(conn, expense_id):
     c = conn.cursor()
-    c.execute('UPDATE budget SET status="approved" WHERE id=?', (expense_id,))
+    c.execute("UPDATE expenses SET status = 'approved' WHERE id = ?", (expense_id,))
     conn.commit()
 
 def reject_expense(conn, expense_id):
     c = conn.cursor()
-    c.execute('UPDATE budget SET status="rejected" WHERE id=?', (expense_id,))
+    c.execute("UPDATE expenses SET status = 'rejected' WHERE id = ?", (expense_id,))
     conn.commit()
 
 def update_data(conn, data):
@@ -86,3 +104,24 @@ def delete_data(conn, id):
     c = conn.cursor()
     c.execute('DELETE FROM budget WHERE id = ?', (id,))
     conn.commit()
+
+def get_approved_expenses(project_id, category, item):
+    conn = create_connection("budget.db")
+    c = conn.cursor()
+    c.execute('''
+        SELECT SUM(amount) FROM expenses
+        WHERE project_id = ? AND category = ? AND item = ? AND status = 'approved'
+    ''', (project_id, category, item))
+    result = c.fetchone()[0]
+    conn.close()
+    return result if result is not None else 0
+
+def insert_expense(expense):
+    conn = create_connection("budget.db")
+    c = conn.cursor()
+    c.execute('''
+        INSERT INTO expenses (project_id, category, item, amount, description, status)
+        VALUES (?, ?, ?, ?, ?, ?)
+    ''', (expense['project_id'], expense['category'], expense['item'], expense['amount'], expense['description'], expense['status']))
+    conn.commit()
+    conn.close()

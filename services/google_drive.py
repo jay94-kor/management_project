@@ -66,6 +66,21 @@ def get_project_list(folder_id):
         contract_start_date = sheet['M3'].value
         contract_end_date = sheet['M4'].value
         
+        # 카테고리, 항목, 내용, 배정금액 추출
+        categories = []
+        items = []
+        descriptions = []
+        allocated_amounts = []
+        row = 8
+        while sheet[f'B{row}'].value:
+            category = sheet[f'B{row}'].value
+            if '내부인건비' not in category:
+                categories.append(category)
+                items.append(sheet[f'C{row}'].value)
+                descriptions.append(sheet[f'D{row}'].value)
+                allocated_amounts.append(sheet[f'L{row}'].value)
+            row += 1
+        
         projects.append({
             'id': file_id,
             'name': project_name,
