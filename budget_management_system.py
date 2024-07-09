@@ -9,16 +9,45 @@ def get_db_connection():
 
 # 엑셀 데이터 로드 함수
 def load_excel_data(uploaded_file):
-    df = pd.read_excel(uploaded_file, sheet_name='예산배정 및 정산서')
+    df = pd.read_excel(uploaded_file, sheet_name='예산배정 및 정산서', header=4)
+    df.ffill(axis=0, inplace=True)
+    
+    # Rename columns to match database fields
+    df.columns = ['category', 'item', 'na1', 'description', 'quantity', 'specification', 'input_rate', 
+                  'unit_price', 'amount', 'allocated_amount', 'budget_item', 'settled_amount', 
+                  'expected_unit_price', 'ordered_amount', 'difference', 'profit_rate', 
+                  'company_name', 'partner_registered', 'unregistered_reason', 'remarks']
+    
+    relevant_columns = ['category', 'item', 'description', 'quantity', 'specification', 'input_rate', 
+                        'unit_price', 'amount', 'allocated_amount', 'budget_item', 'settled_amount', 
+                        'expected_unit_price', 'ordered_amount', 'difference', 'profit_rate', 
+                        'company_name', 'partner_registered', 'unregistered_reason', 'remarks']
+    df = df[relevant_columns]
+    
     return df
 
 # 데이터베이스에 데이터 삽입 함수
 def insert_data_to_db(df):
     conn = get_db_connection()
     cursor = conn.cursor()
+    
     for index, row in df.iterrows():
-        cursor.execute('INSERT INTO budget_items (project_name, category, item, description, allocated_amount, used_amount, remaining_amount, company_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                       (row['project_name'], row['category'], row['item'], row['description'], row['allocated_amount'], row['used_amount'], row['remaining_amount'], row['company_name']))
+        cursor.execute('''
+            INSERT INTO budget_items (
+                category, item, description, quantity, specification, input_rate, 
+                unit_price, amount, allocated_amount, budget_item, settled_amount, 
+                expected_unit_price, ordered_amount, difference, profit_rate, 
+                company_name, partner_registered, unregistered_reason, remarks
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            row['category'], row['item'], row['description'], row['quantity'], 
+            row['specification'], row['input_rate'], row['unit_price'], row['amount'], 
+            row['allocated_amount'], row['budget_item'], row['settled_amount'], 
+            row['expected_unit_price'], row['ordered_amount'], row['difference'], 
+            row['profit_rate'], row['company_name'], row['partner_registered'], 
+            row['unregistered_reason'], row['remarks']
+        ))
+    
     conn.commit()
     conn.close()
 
@@ -177,3 +206,12 @@ if uploaded_file:
                 conn.commit()
                 conn.close()
                 st.success("수정 요청이 승인되었습니다.")
+        else:
+            st.write("승인 대기 중인 수정 요청이 없습니다.")
+
+    # 데이터베이스에 저장된 데이터 표시
+    st.write('데이터베이스에 저장된 예산 항목:')
+    conn = get_db_connection()
+    df_db = pd.read_sql_query("SELECT * FROM budget_items", conn)
+    conn.close()
+    st.dataframe(df_db)
