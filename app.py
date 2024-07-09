@@ -9,12 +9,14 @@ from services.google_sheets import read_sheet_data, sync_data_with_db
 # Streamlit 시크릿에서 Google Drive 폴더 ID 가져오기
 FOLDER_ID = st.secrets["google_drive"]["folder_id"]
 
-# 파일 업로드를 Google Drive 폴더로 자동으로 처리
-spreadsheet_id = monitor_and_convert(FOLDER_ID)
-
 # 데이터베이스 연결 및 테이블 생성
 conn = create_connection()
 create_table(conn)
+
+# 파일 업로드를 Google Drive 폴더로 자동으로 처리
+spreadsheet_id = monitor_and_convert(FOLDER_ID)
+
+st.title("Management Project Dashboard")
 
 if spreadsheet_id:
     # Google Sheets 데이터 읽기
@@ -32,10 +34,12 @@ if spreadsheet_id:
     df = pd.DataFrame(db_data, columns=['category', 'subcategory', 'amount'])
     
     # 프로젝트별 총 예산
+    st.subheader("Total Budget per Project")
     fig1 = px.bar(df, x='category', y='amount', title='Total Budget per Project')
     st.plotly_chart(fig1)
 
     # 잔여 예산 및 평균 잔여 예산
+    st.subheader("Remaining Budget per Project")
     remaining_budget = df.groupby('category')['amount'].sum().reset_index()
     average_remaining_budget = remaining_budget['amount'].mean()
 
@@ -47,3 +51,13 @@ if spreadsheet_id:
 # Google Sheets와 데이터베이스 간의 데이터 동기화 버튼
 if st.button('Sync with Google Sheets'):
     sync_data_with_db(spreadsheet_id, lambda: fetch_all_data(conn))
+    st.success("Data synchronized with Google Sheets")
+
+# 데이터베이스 상태 확인
+st.subheader("Database Status")
+db_data = fetch_all_data(conn)
+if db_data:
+    df = pd.DataFrame(db_data, columns=['category', 'subcategory', 'amount'])
+    st.dataframe(df)
+else:
+    st.write("No data found in the database.")
