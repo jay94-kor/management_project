@@ -192,13 +192,29 @@ def analyze_excel(df):
     )
     
     try:
-        structured_data = json.loads(response.choices[0].message.content)
-        return pd.DataFrame(structured_data)
+        content = response.choices[0].message.content.strip()
+        # JSON 시작과 끝 부분 찾기
+        start = content.find('[')
+        end = content.rfind(']') + 1
+        if start != -1 and end != -1:
+            json_str = content[start:end]
+            structured_data = json.loads(json_str)
+            return pd.DataFrame(structured_data)
+        else:
+            raise ValueError("유효한 JSON 데이터를 찾을 수 없습니다.")
     except json.JSONDecodeError as e:
         st.error(f"GPT 응답을 JSON으로 파싱하는 데 실패했습니다: {str(e)}")
         st.text("GPT 응답:")
         st.text(response.choices[0].message.content)
-        return None
+    except ValueError as e:
+        st.error(str(e))
+        st.text("GPT 응답:")
+        st.text(response.choices[0].message.content)
+    except Exception as e:
+        st.error(f"예상치 못한 오류가 발생했습니다: {str(e)}")
+        st.text("GPT 응답:")
+        st.text(response.choices[0].message.content)
+    return None
 
 def upload_excel():
     st.subheader("엑셀 파일 업로드")
