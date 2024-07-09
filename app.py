@@ -3,7 +3,6 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import streamlit as st
-import asyncio
 import pandas as pd
 from services.google_drive import get_project_list
 from services.google_sheets import read_sheet_data, sync_data_with_db
@@ -12,7 +11,7 @@ from utils.openai_utils import classify_data
 from utils.account_management import create_user_table, login, register, is_admin, grant_approval_rights
 from utils.dashboard import create_dashboard
 
-async def main():
+def main():
     st.title("예산 관리 애플리케이션")
 
     # 사용자 테이블 생성
@@ -27,7 +26,7 @@ async def main():
 
     # 프로젝트 목록 표시
     st.subheader("프로젝트 목록")
-    projects = await get_project_list(folder_id)
+    projects = get_project_list(folder_id)
     project_names = [f"{project['name']}" for project in projects]
 
     cols = st.columns(3)
@@ -41,7 +40,7 @@ async def main():
 
     if 'selected_project' in st.session_state:
         selected_project = st.session_state.selected_project
-        st.write(f"선택된 프로젝트: {selected_project['code']}_{selected_project['name']}")
+        st.write(f"선택된 프로젝트: {selected_project['name']}")
 
         # 지출 추가 폼
         st.subheader("지출 추가")
@@ -96,4 +95,4 @@ async def main():
             st.experimental_rerun()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
