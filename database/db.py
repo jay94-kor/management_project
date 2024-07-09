@@ -34,7 +34,7 @@ def fetch_pending_expenses():
     conn.close()
     return expenses
 
-def approve_expense_db(expense_id):
+def approve_expense(expense_id):
     conn = create_connection()
     c = conn.cursor()
     c.execute("UPDATE expenses SET status = 'approved' WHERE id = ?", (expense_id,))
