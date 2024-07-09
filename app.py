@@ -1,5 +1,6 @@
 import os
 from io import BytesIO, StringIO
+import json
 
 import pandas as pd
 import openpyxl
@@ -168,26 +169,24 @@ def analyze_excel(df):
     response = client.chat.completions.create(
         model="gpt-4o",
         messages=[
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": f"Analyze this Excel data and convert it to the format with columns: 대분류, 항목명, 단가, 개수1, 단위1, 개수2, 단위2, 배정예산. Here's the data:\n\n{df_str}"}
-        ],
-        max_tokens=4000
+            {"role": "system", "content": "당신은 엑셀 데이터를 분석하고 구조화하는 전문가입니다."},
+            {"role": "user", "content": f"""
+            다음 엑셀 데이터를 분석하고 '대분류', '항목명', '단가', '개수1', '단위1', '개수2', '단위2', '배정예산' 열을 가진 JSON 형식으로 변환해주세요.
+            빈 셀이나 소계, 합계 행은 제외하고 실제 데이터만 포함해주세요.
+            숫자 데이터는 정수형으로 변환해주세요.
+            JSON 형식으로만 응답해주세요.
+
+            {df_str}
+            """}
+        ]
     )
     
-    converted_data = response.choices[0].message.content.strip()
-    
     try:
-        # CSV 문자열을 StringIO 객체로 변환
-        csv_data = StringIO(converted_data)
-        # 헤더 없이 CSV 파일 읽기
-        converted_df = pd.read_csv(csv_data, header=None, names=['대분류', '항목명', '단가', '개수1', '단위1', '개수2', '단위2', '배정예산'])
-    except Exception as e:
-        st.error(f"데이터 변환 중 오류 발생: {e}")
-        st.text("API 응답:")
-        st.text(converted_data)
+        structured_data = json.loads(response.choices[0].message.content)
+        return pd.DataFrame(structured_data)
+    except json.JSONDecodeError:
+        st.error("GPT 응답을 JSON으로 파싱하는 데 실패했습니다.")
         return None
-    
-    return converted_df
 
 def upload_excel():
     st.subheader("엑셀 파일 업로드")
@@ -195,13 +194,11 @@ def upload_excel():
     uploaded_file = st.file_uploader("엑셀 파일을 선택하세요", type=["xlsx", "xls"])
     
     if uploaded_file is not None:
-        df = pd.read_excel(uploaded_file)
-        st.write("원본 데이터:")
-        st.dataframe(df)
-        
-        if st.button("데이터 분석 및 변환"):
-            try:
-                converted_df = analyze_excel(df)
+        try:
+            df = pd.read_excel(uploaded_file)
+            converted_df = analyze_excel(df)
+            
+            if converted_df is not None:
                 st.write("변환된 데이터:")
                 st.dataframe(converted_df)
                 
@@ -209,8 +206,8 @@ def upload_excel():
                     with engine.connect() as conn:
                         converted_df.to_sql('budget_items', conn, if_exists='append', index=False)
                     st.success("데이터가 성공적으로 저장되었습니다.")
-            except Exception as e:
-                st.error(f"An error occurred during analysis: {e}")
+        except Exception as e:
+            st.error(f"파일 처리 중 오류 발생: {e}")
 
 def main():
     create_tables()
