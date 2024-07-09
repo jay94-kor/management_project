@@ -15,6 +15,8 @@ def load_excel_data(uploaded_file, sheet_name=None):
                'company_name', 'partner_registered', 'unregistered_reason', 'remarks']
     
     # 실제 데이터프레임의 열 수에 맞게 열 이름 조정
+    if len(df.columns) > len(columns):
+        df = df.iloc[:, :len(columns)]  # 필요한 열만 선택
     df.columns = columns[:len(df.columns)]
     
     # 누락된 열 추가
