@@ -3,6 +3,8 @@ from google.oauth2 import service_account
 import streamlit as st
 import json
 import os
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
 # Google Sheets API 설정
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
@@ -47,3 +49,24 @@ def sync_data_with_db(spreadsheet_id, fetch_db_data):
     
     # Google Sheets에 데이터 쓰기
     write_sheet_data(spreadsheet_id, 'Sheet1!A1', values)
+
+def get_gspread_client():
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(st.secrets["gcp_service_account"], scope)
+    client = gspread.authorize(creds)
+    return client
+
+def read_sheet_data(spreadsheet_id, range_name):
+    client = get_gspread_client()
+    sheet = client.open_by_key(spreadsheet_id).worksheet(range_name)
+    data = sheet.get_all_records()
+    return data
+
+def sync_data_with_db(spreadsheet_id, fetch_data_func):
+    client = get_gspread_client()
+    sheet = client.open_by_key(spreadsheet_id).sheet1
+    data = fetch_data_func()
+    sheet.clear()
+    sheet.append_row(["Date", "Category", "Subcategory", "Amount", "Description"])
+    for row in data:
+        sheet.append_row(row)
