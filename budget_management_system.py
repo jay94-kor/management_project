@@ -75,14 +75,18 @@ if uploaded_file:
     st.write("엑셀 파일의 열 이름:")
     st.write(df.columns.tolist())
     
-    # 고정 칼럼과 자유 작성 칼럼 구분
-    fixed_columns = ['project_name', 'category', 'item', 'description', 'allocated_amount']
-    available_columns = [col for col in df.columns if col in fixed_columns]
+    # "배정 예산"이 포함된 열까지를 고정 칼럼으로 설정
+    fixed_columns = []
+    for col in df.columns:
+        fixed_columns.append(col)
+        if "배정 예산" in col:
+            break
+    
     editable_columns = [col for col in df.columns if col not in fixed_columns]
 
     # 고정 칼럼 데이터프레임
-    if available_columns:
-        fixed_df = df[available_columns]
+    if fixed_columns:
+        fixed_df = df[fixed_columns]
         st.write("고정된 데이터:")
         st.dataframe(fixed_df)
     else:
