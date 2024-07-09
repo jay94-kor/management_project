@@ -1,6 +1,7 @@
 import os
 from io import BytesIO, StringIO
 import json
+import re
 
 import pandas as pd
 import openpyxl
@@ -163,33 +164,40 @@ def view_budget():
     
     st.dataframe(df)
 
-def analyze_excel(df):
-    df_str = df.to_string()
+def clean_and_parse_json(response_text):
+    # JSON 형식이 아닌 텍스트 제거
+    json_start = response_text.find('[')
+    json_end = response_text.rfind(']') + 1
+    if json_start != -1 and json_end != -1:
+        json_text = response_text[json_start:json_end]
+    else:
+        raise ValueError("JSON 데이터를 찾을 수 없습니다.")
     
-    response = client.chat.completions.create(
-        model="gpt-4",
-        messages=[
-            {"role": "system", "content": "당신은 엑셀 데이터를 분석하고 구조화하는 전문가입니다."},
-            {"role": "user", "content": f"""
-            다음 엑셀 데이터를 분석하고 '대분류', '항목명', '단가', '개수1', '단위1', '개수2', '단위2', '배정예산' 열을 가진 JSON 배열 형식으로 변환해주세요.
-            빈 셀이나 소계, 합계 행은 제외하고 실제 데이터만 포함해주세요.
-            숫자 데이터는 정수형으로 변환해주세요.
-            JSON 배열 형식으로만 응답해주세요. 다른 설명은 필요 없습니다.
+    # 작은따옴표를 큰따옴표로 변경
+    json_text = json_text.replace("'", '"')
+    
+    # 숫자 값의 쉼표 제거
+    json_text = re.sub(r'(\d),(\d)', r'\1\2', json_text)
+    
+    return json.loads(json_text)
 
-            {df_str}
-            """}
-        ]
-    )
+def analyze_excel(df, column_mapping):
+    # 열 이름 변경
+    df = df.rename(columns=column_mapping)
     
-    try:
-        response_text = response.choices[0].message.content
-        structured_data = clean_and_parse_json(response_text)
-        return pd.DataFrame(structured_data)
-    except Exception as e:
-        st.error(f"GPT 응답을 처리하는 데 실패했습니다: {str(e)}")
-        st.text("GPT 응답:")
-        st.text(response_text)
-        return None
+    # 필요한 열만 선택
+    required_columns = ['대분류', '항목명', '단가', '개수1', '단위1', '개수2', '단위2', '배정예산']
+    df = df[required_columns]
+    
+    # 숫자 데이터 변환
+    numeric_columns = ['단가', '개수1', '개수2', '배정예산']
+    for col in numeric_columns:
+        df[col] = pd.to_numeric(df[col], errors='coerce')
+    
+    # NaN 값 제거
+    df = df.dropna()
+    
+    return df
 
 def upload_excel():
     st.subheader("엑셀 파일 업로드")
@@ -199,16 +207,29 @@ def upload_excel():
     if uploaded_file is not None:
         try:
             df = pd.read_excel(uploaded_file)
-            converted_df = analyze_excel(df)
+            st.write("원본 데이터:")
+            st.dataframe(df)
             
-            if converted_df is not None:
-                st.write("변환된 데이터:")
-                st.dataframe(converted_df)
-                
-                if st.button("데이터베이스에 저장"):
-                    with engine.connect() as conn:
-                        converted_df.to_sql('budget_items', conn, if_exists='append', index=False)
-                    st.success("데이터가 성공적으로 저장되었습니다.")
+            # 열 매핑
+            st.subheader("열 매핑")
+            column_mapping = {}
+            required_columns = ['대분류', '항목명', '단가', '개수1', '단위1', '개수2', '단위2', '배정예산']
+            for col in required_columns:
+                column_mapping[col] = st.selectbox(f"{col}에 해당하는 열 선택", options=[''] + list(df.columns), key=col)
+            
+            if st.button("데이터 변환"):
+                # 빈 값이 있는지 확인
+                if '' in column_mapping.values():
+                    st.error("모든 필드를 매핑해야 합니다.")
+                else:
+                    converted_df = analyze_excel(df, column_mapping)
+                    st.write("변환된 데이터:")
+                    st.dataframe(converted_df)
+                    
+                    if st.button("데이터베이스에 저장"):
+                        with engine.connect() as conn:
+                            converted_df.to_sql('budget_items', conn, if_exists='append', index=False)
+                        st.success("데이터가 성공적으로 저장되었습니다.")
         except Exception as e:
             st.error(f"파일 처리 중 오류 발생: {e}")
 
