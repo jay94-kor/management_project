@@ -4,6 +4,7 @@ from services.google_sheets_service import sync_data_with_sheets
 from utils.dashboard import create_budget_dashboard, create_projects_comparison_dashboard
 from utils.account_management import login, register, is_admin, grant_approval_rights
 from utils.budget_warnings import check_budget_warnings
+from database.db import create_connection, fetch_all_projects, insert_expense, fetch_pending_expenses, approve_expense, reject_expense, get_approved_expenses
 
 st.set_page_config(page_title="예산 관리 애플리케이션", layout="wide")
 
