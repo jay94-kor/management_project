@@ -7,7 +7,7 @@ import asyncio
 import pandas as pd
 from services.google_drive import get_project_list
 from services.google_sheets import read_sheet_data, sync_data_with_db
-from database.db import create_connection, create_table, fetch_all_data, insert_data, update_data, delete_data
+from database.db import create_connection, create_table, fetch_all_data, insert_data, update_data, delete_data, fetch_pending_expenses, approve_expense, reject_expense
 from utils.openai_utils import classify_data
 from utils.account_management import create_user_table, login, register, is_admin, grant_approval_rights
 from utils.dashboard import create_dashboard
@@ -30,11 +30,13 @@ async def main():
     projects = await get_project_list(folder_id)
     project_names = [f"{project['code']}_{project['name']}" for project in projects]
 
-    for project in projects:
-        with st.card(f"{project['code']}_{project['name']}"):
+    cols = st.columns(3)
+    for i, project in enumerate(projects):
+        with cols[i % 3]:
+            st.write(f"### {project['code']}_{project['name']}")
             st.write(f"프로젝트 코드: {project['code']}")
             st.write(f"프로젝트 이름: {project['name']}")
-            if st.button(f"지출 추가하기 - {project['code']}"):
+            if st.button(f"지출 추가하기 - {project['code']}", key=f"add_expense_{project['code']}"):
                 st.session_state.selected_project = project
                 st.experimental_rerun()
 
@@ -63,11 +65,11 @@ async def main():
             pending_expenses = fetch_pending_expenses(conn, selected_project['id'])
             for expense in pending_expenses:
                 st.write(expense)
-                if st.button(f"승인 - {expense['id']}"):
-                    approve_expense(conn, expense['id'])
+                if st.button(f"승인 - {expense[0]}", key=f"approve_{expense[0]}"):
+                    approve_expense(conn, expense[0])
                     st.success("지출이 승인되었습니다.")
-                if st.button(f"반려 - {expense['id']}"):
-                    reject_expense(conn, expense['id'])
+                if st.button(f"반려 - {expense[0]}", key=f"reject_{expense[0]}"):
+                    reject_expense(conn, expense[0])
                     st.error("지출이 반려되었습니다.")
 
         # Google Sheets 동기화
