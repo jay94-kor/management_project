@@ -28,15 +28,14 @@ async def main():
     # 프로젝트 목록 표시
     st.subheader("프로젝트 목록")
     projects = await get_project_list(folder_id)
-    project_names = [f"{project['code']}_{project['name']}" for project in projects]
+    project_names = [f"{project['name']}" for project in projects]
 
     cols = st.columns(3)
     for i, project in enumerate(projects):
         with cols[i % 3]:
-            st.write(f"### {project['code']}_{project['name']}")
-            st.write(f"프로젝트 코드: {project['code']}")
+            st.write(f"### {project['name']}")
             st.write(f"프로젝트 이름: {project['name']}")
-            if st.button(f"지출 추가하기 - {project['code']}", key=f"add_expense_{project['code']}_{i}"):
+            if st.button(f"지출 추가하기 - {project['name']}", key=f"add_expense_{project['name']}_{i}"):
                 st.session_state.selected_project = project
                 st.experimental_rerun()
 

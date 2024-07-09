@@ -68,7 +68,6 @@ async def get_project_list(folder_id):
         
         projects.append({
             'id': file_id,
-            'code': file_name.split('_')[1],  # 파일 이름에서 코드 추출
             'name': project_name,
             'client': client_name,
             'author_affiliation': author_affiliation,
