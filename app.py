@@ -74,8 +74,12 @@ if uploaded_file:
 
 # Google Sheets와 데이터베이스 간의 데이터 동기화 버튼
 if st.button('Sync with Google Sheets'):
-    sync_data_with_db(spreadsheet_id, lambda: fetch_all_data(conn))
-    st.success("Data synchronized with Google Sheets")
+    spreadsheet_id = st.session_state.get('spreadsheet_id')
+    if spreadsheet_id:
+        sync_data_with_db(spreadsheet_id, lambda: fetch_all_data(conn))
+        st.success("Data synchronized with Google Sheets")
+    else:
+        st.error("No spreadsheet ID found. Please upload a file first.")
 
 # 데이터베이스 상태 확인
 st.subheader("Database Status")
