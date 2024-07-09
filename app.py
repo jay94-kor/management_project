@@ -166,12 +166,12 @@ def analyze_excel(df):
     df_str = df.to_string()
     
     response = openai.ChatCompletion.create(
-        model="gpt-4",
+        model="gpt-4o",
         messages=[
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": f"Analyze this Excel data and convert it to the format with columns: 대분류, 항목명, 단가, 개수1, 단위1, 개수2, 단위2, 배정예산. Here's the data:\n\n{df_str}"}
         ],
-        max_tokens=1500
+        max_tokens=6000
     )
     
     converted_data = response.choices[0].message['content'].strip()
