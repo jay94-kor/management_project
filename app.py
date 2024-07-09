@@ -66,7 +66,21 @@ if uploaded_file:
                     max_tokens=3000
                 )
                 
-                structured_data = eval(response.choices[0].message.content)
+                structured_data_str = response.choices[0].message.content
+                st.write("API 응답:", structured_data_str)  # 디버깅을 위해 API 응답 출력
+                
+                # JSON 형식으로 파싱 시도
+                try:
+                    structured_data = json.loads(structured_data_str)
+                except json.JSONDecodeError:
+                    # JSON 파싱 실패 시 ast.literal_eval 사용
+                    try:
+                        structured_data = ast.literal_eval(structured_data_str)
+                    except:
+                        # ast.literal_eval도 실패하면 문자열 그대로 반환
+                        st.error("데이터 파싱 실패. API 응답을 확인하세요.")
+                        return structured_data_str
+                
                 return structured_data
             except Exception as e:
                 st.error(f"OpenAI API 오류: {str(e)}")
@@ -122,7 +136,7 @@ if uploaded_file:
             st.write("승인 대기 중인 수정 요청이 없습니다.")
 
     # 데이터베이스에 저장된 데이터 표시
-    st.write('데이터베이스에 저장된 예산 항목:')
+    st.write('데이터��이스에 저장된 예산 항목:')
     conn = get_db_connection()
     df_db = pd.read_sql_query("SELECT * FROM budget_items", conn)
     conn.close()
