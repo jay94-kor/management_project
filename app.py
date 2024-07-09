@@ -3,8 +3,7 @@ import pandas as pd
 from db.database import get_db_connection, insert_data_to_db
 from utils.excel_utils import load_excel_data
 from utils.auth import login
-from utils.budget_calculations import calculate_remaining_amount
-import openai
+from utils.budget_calculations import calculate_remaining_amount, handle_over_budget
 from openai import OpenAI
 
 # Streamlit 앱 레이아웃
@@ -42,104 +41,37 @@ uploaded_file = st.file_uploader("엑셀 파일을 업로드 하세요", type="x
 
 if uploaded_file:
     # OpenAI 클라이언트 초기화
-    client = OpenAI(api_key=st.secrets["openai"]["api_key"])
-
-    def analyze_budget_data(df):
-        # 데이터프레임을 문자열로 변환
-        df_string = df.to_string()
-
-        # GPT-4에 분석 요청
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": "당신은 예산 분석 전문가입니다. 주어진 예산 데이터를 분석하고 인사이트를 제공해주세요."},
-                {"role": "user", "content": f"다음 예산 데이터를 분석해주세요:\n\n{df_string}\n\n1. 예산 사용 현황 요약\n2. 초과 지출 항목 식별\n3. 예산 절감 가능성 분석\n4. 향후 예산 조정 제안"}
-            ]
-        )
-
-        return response.choices[0].message.content
-
-    df = load_excel_data(uploaded_file)
-    
-    # 데이터프레임의 열 이름 출력
-    st.write("엑셀 파일의 열 이름:")
-    st.write(df.columns.tolist())
-    
-    # "배정 예산"이 포함된 열까지를 고정 칼럼으로 설정
-    fixed_columns = []
-    for col in df.columns:
-        fixed_columns.append(col)
-        if "배정 예산" in col:
-            break
-    
-    editable_columns = [col for col in df.columns if col not in fixed_columns]
-
-    # 고정 칼럼 데이터프레임
-    if fixed_columns:
-        fixed_df = df[fixed_columns]
-        st.write("고정된 데이터:")
-        st.dataframe(fixed_df)
+    openai_api_key = st.secrets.get("openai", {}).get("api_key")
+    if not openai_api_key:
+        st.error("OpenAI API 키가 설정되지 않았습니다. Streamlit 시크릿에 API 키를 추가해주세요.")
     else:
-        st.warning("고정 열을 찾을 수 없습니다. 엑셀 파일의 구조를 확인해주세요.")
+        client = OpenAI(api_key=openai_api_key)
 
-    # 자유 작성 칼럼 데이터프레임
-    if editable_columns:
-        editable_df = df[editable_columns]
-        st.write("자유롭게 작성할 데이터:")
-        edited_df = st.data_editor(editable_df)
-    else:
-        st.warning("편집 가능한 열을 찾을 수 없습니다.")
-        edited_df = pd.DataFrame()  # 빈 데이터프레임 생성
-
-    # 사용자 정보 입력
-    st.write("지출 요청자 정보 입력:")
-    requester_name = st.text_input("이름")
-    requester_email = st.text_input("이메일")
-    requester_phone = st.text_input("전화번호")
-
-    # 예산 데이터 분석
-    if st.button('예산 데이터 분석'):
-        analysis_result = analyze_budget_data(df)
-        st.write("예산 데이터 분석 결과:")
-        st.write(analysis_result)
-
-    # 데이터 저장 버튼
-    if st.button('데이터베이스에 저장'):
-        for index, row in edited_df.iterrows():
-            df.at[index, 'used_amount'] = row['used_amount']
-            df.at[index, 'company_name'] = row['company_name']
-            df.at[index, 'remaining_amount'] = calculate_remaining_amount(df.at[index, 'allocated_amount'], row['used_amount'])
+        df = load_excel_data(uploaded_file)
         
-        insert_data_to_db(df)
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        for index, row in edited_df.iterrows():
-            cursor.execute('INSERT INTO payments (budget_item_id, amount, date, requester_name, requester_email, requester_phone) VALUES (?, ?, date("now"), ?, ?, ?)',
-                           (index + 1, row['used_amount'], requester_name, requester_email, requester_phone))
-        conn.commit()
-        conn.close()
-        st.success('데이터가 성공적으로 입력되었습니다.')
+        def analyze_and_structure_data(df):
+            df_string = df.to_string()
+            
+            response = client.chat.completions.create(
+                model="gpt-4",
+                messages=[
+                    {"role": "system", "content": "당신은 데이터 분석 및 구조화 전문가입니다. 주어진 엑셀 데이터를 분석하고 DB 구조에 맞게 정리해주세요."},
+                    {"role": "user", "content": f"다음 엑셀 데이터를 분석하고, 'budget_items' 테이블에 맞게 구조화해주세요. 테이블 구조는 다음과 같습니다: id, project_name, category, item, description, quantity, specification, input_rate, unit_price, amount, allocated_amount, budget_item, settled_amount, expected_unit_price, ordered_amount, difference, profit_rate, company_name, partner_registered, unregistered_reason, remarks, remaining_amount.\n\n엑셀 데이터:\n{df_string}"}
+                ]
+            )
+            
+            structured_data = response.choices[0].message.content
+            return eval(structured_data)  # 문자열을 파이썬 객체로 변환
 
-    # 초과 지출 처리
-    def handle_over_budget(project_name, amount):
-        st.write(f"프로젝트 '{project_name}'에서 초과 지출이 발생했습니다. 초과 금액: {amount}")
-        conn = get_db_connection()
-        other_projects = pd.read_sql_query("SELECT DISTINCT project_name FROM budget_items WHERE project_name != ?", conn, params=(project_name,))
-        conn.close()
-        selected_project = st.selectbox("초과 금액을 충당할 다른 프로젝트를 선택하세요", other_projects['project_name'].tolist())
-        if selected_project:
-            conn = get_db_connection()
-            selected_items = pd.read_sql_query("SELECT item FROM budget_items WHERE project_name = ?", conn, params=(selected_project,))
-            conn.close()
-            selected_item = st.selectbox("항목을 선택하세요", selected_items['item'].tolist())
-            if st.button('충당'):
-                conn = get_db_connection()
-                cursor = conn.cursor()
-                cursor.execute('UPDATE budget_items SET remaining_amount = remaining_amount - ? WHERE project_name = ? AND item = ?', (amount, selected_project, selected_item))
-                cursor.execute('UPDATE budget_items SET remaining_amount = remaining_amount + ? WHERE project_name = ? AND item = ?', (amount, project_name, selected_item))
-                conn.commit()
-                conn.close()
-                st.success(f"프로젝트 '{selected_project}'의 항목 '{selected_item}'에서 초과 금액을 충당했습니다.")
+        st.write("데이터 분석 및 구조화 중...")
+        structured_data = analyze_and_structure_data(df)
+        
+        st.write("구조화된 데이터:")
+        st.write(structured_data)
+
+        if st.button('데이터베이스에 저장'):
+            insert_data_to_db(structured_data)
+            st.success('데이터가 성공적으로 데이터베이스에 저장되었습니다.')
 
     # 데이터베이스에서 데이터 가져오기
     conn = get_db_connection()
