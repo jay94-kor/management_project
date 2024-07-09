@@ -31,25 +31,26 @@ def insert_data_to_db(df):
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    for index, row in df.iterrows():
-        cursor.execute('''
-            INSERT INTO budget_items (
-                category, item, description, quantity, specification, input_rate, 
-                unit_price, amount, allocated_amount, budget_item, settled_amount, 
-                expected_unit_price, ordered_amount, difference, profit_rate, 
-                company_name, partner_registered, unregistered_reason, remarks
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            row['category'], row['item'], row['description'], row['quantity'], 
-            row['specification'], row['input_rate'], row['unit_price'], row['amount'], 
-            row['allocated_amount'], row['budget_item'], row['settled_amount'], 
-            row['expected_unit_price'], row['ordered_amount'], row['difference'], 
-            row['profit_rate'], row['company_name'], row['partner_registered'], 
-            row['unregistered_reason'], row['remarks']
-        ))
-    
-    conn.commit()
-    conn.close()
+    try:
+        for index, row in df.iterrows():
+            # 데이터베이스에 삽입할 열 이름과 값을 명시적으로 지정
+            columns = ', '.join(row.index)
+            placeholders = ', '.join(['?' for _ in row.index])
+            query = f'''
+                INSERT INTO budget_items (
+                    {columns}
+                ) VALUES ({placeholders})
+            '''
+            cursor.execute(query, tuple(row))
+        
+        conn.commit()
+        st.success('데이터가 성공적으로 입력되었습니다.')
+    except sqlite3.Error as e:
+        st.error(f'데이터베이스 오류: {e}')
+        st.write('삽입하려던 데이터:')
+        st.write(df)
+    finally:
+        conn.close()
 
 # 잔액 계산 함수
 def calculate_remaining_amount(allocated, used):
