@@ -34,6 +34,9 @@ if uploaded_file:
         # Google Sheets 데이터 읽기
         sheet_data = read_sheet_data(spreadsheet_id, 'Sheet1!A1:C')
         
+        # 디버깅: sheet_data 출력
+        st.write("Sheet Data:", sheet_data)
+        
         if len(sheet_data) > 1:
             df = pd.DataFrame(sheet_data[1:], columns=sheet_data[0])
             
