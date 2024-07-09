@@ -125,9 +125,10 @@ if uploaded_file:
     if editable_columns:
         editable_df = df[editable_columns]
         st.write("자유롭게 작성할 데이터:")
-        edited_df = st.experimental_data_editor(editable_df)
+        edited_df = st.data_editor(editable_df)
     else:
         st.warning("편집 가능한 열을 찾을 수 없습니다.")
+        edited_df = pd.DataFrame()  # 빈 데이터프레임 생성
 
     # 사용자 정보 입력
     st.write("지출 요청자 정보 입력:")
