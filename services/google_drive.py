@@ -4,6 +4,9 @@ from googleapiclient.discovery import build
 from google.oauth2 import service_account
 import streamlit as st
 import json
+import openpyxl
+import io
+from googleapiclient.http import MediaIoBaseDownload
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -32,6 +35,20 @@ async def get_project_list(folder_id):
     files = await list_files_in_folder(folder_id)
     projects = []
     for file in files:
+        file_id = file['id']
+        file_name = file['name']
+        
+        # 파일 다운로드
+        request = service.files().get_media(fileId=file_id)
+        fh = io.BytesIO()
+        downloader = MediaIoBaseDownload(fh, request)
+        done = False
+        while done is False:
+            status, done = downloader.next_chunk()
+        
+        # 엑셀 파일 열기
+        fh.seek(0)
+        wb = openpyxl.load_workbook(fh)
         parts = file['name'].split('_')
         affiliation = parts[1].strip()
         project_name = parts[2].strip()
