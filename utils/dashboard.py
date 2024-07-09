@@ -11,6 +11,7 @@ def create_dashboard(data):
 
     # 카테고리별 예산 분포
     fig = px.pie(df, values='amount', names='category', title='카테고리별 예산 분포')
+
     st.plotly_chart(fig)
 
     # 서브카테고리별 예산 분포 (상위 10개)
@@ -27,5 +28,6 @@ def create_dashboard(data):
     }
     usage_df = pd.DataFrame(usage_data)
     usage_df['remaining'] = usage_df['budget'] - usage_df['used']
+
     fig = px.bar(usage_df, x='category', y=['used', 'remaining'], title='카테고리별 예산 사용 현황')
     st.plotly_chart(fig)

@@ -47,9 +47,11 @@ def grant_approval_rights(username):
     c = conn.cursor()
     try:
         c.execute("UPDATE users SET has_approval_rights=1 WHERE username=?", (username,))
+
         conn.commit()
         return True
     except sqlite3.Error:
         return False
+
     finally:
         conn.close()
