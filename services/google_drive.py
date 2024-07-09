@@ -32,10 +32,12 @@ async def get_project_list(folder_id):
     files = await list_files_in_folder(folder_id)
     projects = []
     for file in files:
-        project_code, project_name = file['name'].split('_', 1)
+        parts = file['name'].split('_')
+        affiliation = parts[1].strip()
+        project_name = parts[2].strip()
         projects.append({
             'id': file['id'],
-            'name': project_name,
-            'code': project_code
+            'affiliation': affiliation,
+            'name': project_name
         })
     return projects
