@@ -44,4 +44,5 @@ if spreadsheet_id:
 
 # Google Sheets와 데이터베이스 간의 데이터 동기화 버튼
 if st.button('Sync with Google Sheets'):
-    sync_data_with_db(spreadsheet_id, fetch_all_data)
+    conn = create_connection()
+    sync_data_with_db(spreadsheet_id, lambda: fetch_all_data(conn))
