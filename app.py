@@ -198,6 +198,9 @@ def analyze_excel(df):
         end = content.rfind(']') + 1
         if start != -1 and end != -1:
             json_str = content[start:end]
+            # JSON 문자열 정제
+            json_str = re.sub(r'(\w+):', r'"\1":', json_str)  # 키를 따옴표로 감싸기
+            json_str = json_str.replace("'", '"')  # 작은따옴표를 큰따옴표로 변경
             structured_data = json.loads(json_str)
             return pd.DataFrame(structured_data)
         else:
@@ -205,15 +208,26 @@ def analyze_excel(df):
     except json.JSONDecodeError as e:
         st.error(f"GPT 응답을 JSON으로 파싱하는 데 실패했습니다: {str(e)}")
         st.text("GPT 응답:")
-        st.text(response.choices[0].message.content)
+        st.text(content)
+        # JSON 형식이 아닌 경우 수동으로 파싱 시도
+        try:
+            lines = content.split('\n')
+            data = []
+            for line in lines:
+                if ':' in line:
+                    key, value = line.split(':', 1)
+                    data.append({key.strip(): value.strip()})
+            return pd.DataFrame(data)
+        except Exception as manual_parse_error:
+            st.error(f"수동 파싱도 실패했습니다: {str(manual_parse_error)}")
     except ValueError as e:
         st.error(str(e))
         st.text("GPT 응답:")
-        st.text(response.choices[0].message.content)
+        st.text(content)
     except Exception as e:
         st.error(f"예상치 못한 오류가 발생했습니다: {str(e)}")
         st.text("GPT 응답:")
-        st.text(response.choices[0].message.content)
+        st.text(content)
     return None
 
 def upload_excel():
