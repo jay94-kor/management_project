@@ -55,4 +55,3 @@ def monitor_and_convert(folder_id):
             return spreadsheet_id
     else:
         print("No files found.")
-        return None
