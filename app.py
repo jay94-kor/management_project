@@ -167,7 +167,7 @@ def analyze_excel(df):
     df_str = df.to_string()
     
     response = client.chat.completions.create(
-        model="gpt-4",
+        model="gpt-4o",
         messages=[
             {"role": "system", "content": "당신은 복잡한 엑셀 데이터를 분석하고 구조화하는 전문가입니다."},
             {"role": "user", "content": f"""
