@@ -12,9 +12,9 @@ import openai
 
 # Load environment variables from .env file
 load_dotenv()
-openai.api_key = os.getenv("OPENAI_API_KEY")
+client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-if not openai.api_key:
+if not client:
     st.error("OpenAI API key not found. Please set it in the .env file.")
 
 # Database connection setup
@@ -165,7 +165,7 @@ def view_budget():
 def analyze_excel(df):
     df_str = df.to_string()
     
-    response = openai.ChatCompletion.create(
+    response = client.chat.completions.create(
         model="gpt-4o",
         messages=[
             {"role": "system", "content": "You are a helpful assistant."},
@@ -174,7 +174,7 @@ def analyze_excel(df):
         max_tokens=6000
     )
     
-    converted_data = response.choices[0].message['content'].strip()
+    converted_data = response.choices[0].message.content.strip()
     
     converted_df = pd.read_csv(BytesIO(converted_data.encode()), sep='\s+')
     
