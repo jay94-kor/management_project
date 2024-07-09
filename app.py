@@ -8,15 +8,16 @@ import streamlit as st
 from streamlit_option_menu import option_menu
 from sqlalchemy import create_engine, text
 from dotenv import load_dotenv
-
 import openai
 
 # Load environment variables from .env file
 load_dotenv()
-client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+openai_api_key = os.getenv("OPENAI_API_KEY")
 
-if not client:
+if not openai_api_key:
     st.error("OpenAI API key not found. Please set it in the .env file.")
+else:
+    client = openai.OpenAI(api_key=openai_api_key)
 
 # Database connection setup
 DATABASE = os.path.join(os.getcwd(), 'budget.db')
@@ -48,7 +49,6 @@ def create_tables():
                     FOREIGN KEY (budget_item_id) REFERENCES budget_items (id)
                 )
             """))
-            conn.commit()
     except Exception as e:
         st.error(f"An error occurred while creating tables: {e}")
 
@@ -143,8 +143,6 @@ def add_expense():
                     INSERT INTO expenses (budget_item_id, 지출금액, 지출일자, 협력사)
                     VALUES (:item_id, :amount, :date, :partner)
                 """), {"item_id": item_id, "amount": expense_amount, "date": expense_date, "partner": partner})
-                conn.commit()
-            
             st.success("지출이 추가되었습니다.")
         except Exception as e:
             st.error(f"An error occurred while adding expense: {e}")
