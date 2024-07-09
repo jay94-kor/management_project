@@ -37,6 +37,9 @@ if uploaded_file:
         # Google Sheets 데이터 읽기
         sheet_data = read_sheet_data(spreadsheet_id, 'Sheet1!A1:Z1000')  # 필요한 범위로 조정
         
+        # spreadsheet_id를 세션 상태에 저장
+        st.session_state['spreadsheet_id'] = spreadsheet_id
+        
         # 디버깅: sheet_data 출력
         st.write("Sheet Data:", sheet_data)
         
