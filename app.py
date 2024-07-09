@@ -10,37 +10,10 @@ st.set_page_config(page_title="예산 관리 애플리케이션", layout="wide")
 
 def main():
     st.title("예산 관리 애플리케이션")
-
-    if 'user' not in st.session_state:
-        show_login_register()
-    else:
-        show_main_app()
-
-def show_login_register():
-    tab1, tab2 = st.tabs(["로그인", "회원가입"])
-    
-    with tab1:
-        username = st.text_input("사용자명")
-        password = st.text_input("비밀번호", type="password")
-        if st.button("로그인"):
-            if login(username, password):
-                st.session_state.user = username
-                st.experimental_rerun()
-            else:
-                st.error("로그인 실패")
-
-    with tab2:
-        new_username = st.text_input("새 사용자명")
-        new_password = st.text_input("새 비밀번호", type="password")
-        if st.button("회원가입"):
-            if register(new_username, new_password):
-                st.success("회원가입 성공")
-            else:
-                st.error("회원가입 실패")
-
-def show_main_app():
     projects = get_projects()
-    
+    show_main_app(projects)
+
+def show_main_app(projects):
     st.sidebar.title("메뉴")
     menu = st.sidebar.radio("선택", ["프로젝트 목록", "지출 추가", "승인 대기 지출", "예산 대시보드", "프로젝트 비교", "관리자 기능"])
 
