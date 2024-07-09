@@ -1,10 +1,14 @@
-import streamlit as st
-import json
-import os
+import asyncio
+import logging
 from googleapiclient.discovery import build
 from google.oauth2 import service_account
-import io
-from googleapiclient.http import MediaIoBaseDownload, MediaFileUpload
+from googleapiclient.http import MediaIoBaseDownload
+import streamlit as st
+import json
+
+# 로깅 설정
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Google Drive API 설정
 SCOPES = ['https://www.googleapis.com/auth/drive']
@@ -14,54 +18,38 @@ credentials = service_account.Credentials.from_service_account_info(
     SERVICE_ACCOUNT_INFO, scopes=SCOPES)
 service = build('drive', 'v3', credentials=credentials)
 
-def list_files_in_folder(folder_id):
-    """Google Drive 폴더 내의 파일 목록을 반환합니다."""
+async def list_files_in_folder(folder_id):
     query = f"'{folder_id}' in parents and mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'"
-    results = service.files().list(q=query, pageSize=10, fields="files(id, name)").execute()
-    items = results.get('files', [])
-    return items
+    try:
+        results = await asyncio.to_thread(
+            service.files().list(q=query, pageSize=10, fields="files(id, name)").execute
+        )
+        return results.get('files', [])
+    except Exception as e:
+        logger.error(f"Error listing files: {e}")
+        return []
 
-def download_file(file_id, file_name):
-    """Google Drive에서 파일을 다운로드합니다."""
-    request = service.files().get_media(fileId=file_id)
-    fh = io.FileIO(file_name, 'wb')
-    downloader = MediaIoBaseDownload(fh, request)
-    done = False
-    while done is False:
-        status, done = downloader.next_chunk()
-    return file_name
-
-def upload_file_to_drive(file_name, folder_id):
-    """파일을 Google Drive에 업로드합니다."""
-    file_metadata = {
-        'name': file_name,
-        'parents': [folder_id]
-    }
-    media = MediaFileUpload(file_name, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    file = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
-    return file.get('id')
-
-def convert_xlsx_to_sheet(file_id):
-    """엑셀 파일을 Google Sheets로 변환하고 스프레드시트 ID를 반환합니다."""
+async def convert_xlsx_to_sheet(file_id):
     file_metadata = {
         'name': 'ConvertedSpreadsheet',
         'mimeType': 'application/vnd.google-apps.spreadsheet'
     }
-    file = service.files().copy(
-        fileId=file_id,
-        body=file_metadata,
-        fields='id'
-    ).execute()
-    return file.get('id')
+    try:
+        file = await asyncio.to_thread(
+            service.files().copy(fileId=file_id, body=file_metadata, fields='id').execute
+        )
+        return file.get('id')
+    except Exception as e:
+        logger.error(f"Error converting file: {e}")
+        return None
 
-def monitor_and_convert(folder_id):
-    """Google Drive 폴더를 모니터링하고 새로운 엑셀 파일을 Google Sheets로 변환합니다."""
-    files = list_files_in_folder(folder_id)
-    if files:
+async def monitor_and_convert(folder_id):
+    while True:
+        files = await list_files_in_folder(folder_id)
         for file in files:
-            print(f"Found file: {file['name']} (ID: {file['id']})")
-            spreadsheet_id = convert_xlsx_to_sheet(file['id'])
-            print(f"Converted to Google Sheets: {spreadsheet_id}")
-            return spreadsheet_id
-    else:
-        print("No files found.")
+            logger.info(f"Found file: {file['name']} (ID: {file['id']})")
+            spreadsheet_id = await convert_xlsx_to_sheet(file['id'])
+            if spreadsheet_id:
+                logger.info(f"Converted to Google Sheets: {spreadsheet_id}")
+                return spreadsheet_id
+        await asyncio.sleep(60)  # 1분마다 확인
