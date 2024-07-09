@@ -7,6 +7,8 @@ import json
 import openpyxl
 import io
 from googleapiclient.http import MediaIoBaseDownload
+import httplib2
+import ssl
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -38,10 +40,13 @@ async def get_project_list(folder_id):
         file_id = file['id']
         file_name = file['name']
         
+        # SSL 검증을 비활성화한 HTTP 객체 생성
+        http = httplib2.Http(disable_ssl_certificate_validation=True)
+
         # 파일 다운로드
         request = service.files().get_media(fileId=file_id)
         fh = io.BytesIO()
-        downloader = MediaIoBaseDownload(fh, request)
+        downloader = MediaIoBaseDownload(fh, request, http=http)
         done = False
         while done is False:
             status, done = downloader.next_chunk()
@@ -49,12 +54,27 @@ async def get_project_list(folder_id):
         # 엑셀 파일 열기
         fh.seek(0)
         wb = openpyxl.load_workbook(fh)
-        parts = file['name'].split('_')
-        affiliation = parts[1].strip()
-        project_name = parts[2].strip()
+        sheet = wb.active
+        
+        # 필요한 데이터 추출
+        project_name = sheet['D3'].value
+        client_name = sheet['G3'].value
+        author_affiliation = sheet['D4'].value
+        creation_date = sheet['E4'].value
+        event_date = sheet['J4'].value
+        event_location = sheet['J3'].value
+        contract_start_date = sheet['M3'].value
+        contract_end_date = sheet['M4'].value
+        
         projects.append({
-            'id': file['id'],
-            'affiliation': affiliation,
-            'name': project_name
+            'id': file_id,
+            'name': project_name,
+            'client': client_name,
+            'author_affiliation': author_affiliation,
+            'creation_date': creation_date,
+            'event_date': event_date,
+            'event_location': event_location,
+            'contract_start_date': contract_start_date,
+            'contract_end_date': contract_end_date
         })
     return projects
