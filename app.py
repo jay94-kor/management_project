@@ -164,35 +164,20 @@ def view_budget():
     
     st.dataframe(df)
 
-def clean_and_parse_json(response_text):
-    # JSON 형식이 아닌 텍스트 제거
-    json_start = response_text.find('[')
-    json_end = response_text.rfind(']') + 1
-    if json_start != -1 and json_end != -1:
-        json_text = response_text[json_start:json_end]
-    else:
-        raise ValueError("JSON 데이터를 찾을 수 없습니다.")
-    
-    # 작은따옴표를 큰따옴표로 변경
-    json_text = json_text.replace("'", '"')
-    
-    # 숫자 값의 쉼표 제거
-    json_text = re.sub(r'(\d),(\d)', r'\1\2', json_text)
-    
-    return json.loads(json_text)
-
 def analyze_excel(df, column_mapping):
     # 열 이름 변경
-    df = df.rename(columns=column_mapping)
+    reverse_mapping = {v: k for k, v in column_mapping.items() if v}
+    df = df.rename(columns=reverse_mapping)
     
-    # 필요한 열만 선택
-    required_columns = ['대분류', '항목명', '단가', '개수1', '단위1', '개수2', '단위2', '배정예산']
+    # 필요한 열만 선택 (매핑된 열만)
+    required_columns = [col for col in ['대분류', '항목명', '단가', '개수1', '단위1', '개수2', '단위2', '배정예산'] if col in df.columns]
     df = df[required_columns]
     
     # 숫자 데이터 변환
     numeric_columns = ['단가', '개수1', '개수2', '배정예산']
     for col in numeric_columns:
-        df[col] = pd.to_numeric(df[col], errors='coerce')
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce')
     
     # NaN 값 제거
     df = df.dropna()
@@ -219,19 +204,24 @@ def upload_excel():
             
             if st.button("데이터 변환"):
                 # 빈 값이 있는지 확인
-                if '' in column_mapping.values():
-                    st.error("모든 필드를 매핑해야 합니다.")
+                if all(value == '' for value in column_mapping.values()):
+                    st.error("최소한 하나의 필드는 매핑해야 합니다.")
                 else:
                     converted_df = analyze_excel(df, column_mapping)
-                    st.write("변환된 데이터:")
-                    st.dataframe(converted_df)
-                    
-                    if st.button("데이터베이스에 저장"):
-                        with engine.connect() as conn:
-                            converted_df.to_sql('budget_items', conn, if_exists='append', index=False)
-                        st.success("데이터가 성공적으로 저장되었습니다.")
+                    if converted_df.empty:
+                        st.warning("변환 후 데이터가 비어 있습니다. 매핑을 확인해 주세요.")
+                    else:
+                        st.write("변환된 데이터:")
+                        st.dataframe(converted_df)
+                        
+                        if st.button("데이터베이스에 저장"):
+                            with engine.connect() as conn:
+                                converted_df.to_sql('budget_items', conn, if_exists='append', index=False)
+                            st.success("데이터가 성공적으로 저장되었습니다.")
         except Exception as e:
-            st.error(f"파일 처리 중 오류 발생: {e}")
+            st.error(f"파일 처리 중 오류 발생: {str(e)}")
+            st.text("오류 상세:")
+            st.text(str(e))
 
 def main():
     create_tables()
