@@ -4,6 +4,8 @@ from db.database import get_db_connection, insert_data_to_db
 from utils.excel_utils import load_excel_data
 from utils.auth import login
 from utils.budget_calculations import calculate_remaining_amount
+import openai
+from openai import OpenAI
 
 # Streamlit 앱 레이아웃
 st.title('예산 관리 자동화 시스템')
@@ -39,6 +41,24 @@ else:
 uploaded_file = st.file_uploader("엑셀 파일을 업로드 하세요", type="xlsx")
 
 if uploaded_file:
+    # OpenAI 클라이언트 초기화
+    client = OpenAI(api_key=st.secrets["openai"]["api_key"])
+
+    def analyze_budget_data(df):
+        # 데이터프레임을 문자열로 변환
+        df_string = df.to_string()
+
+        # GPT-4에 분석 요청
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": "당신은 예산 분석 전문가입니다. 주어진 예산 데이터를 분석하고 인사이트를 제공해주세요."},
+                {"role": "user", "content": f"다음 예산 데이터를 분석해주세요:\n\n{df_string}\n\n1. 예산 사용 현황 요약\n2. 초과 지출 항목 식별\n3. 예산 절감 가능성 분석\n4. 향후 예산 조정 제안"}
+            ]
+        )
+
+        return response.choices[0].message.content
+
     df = load_excel_data(uploaded_file)
     
     # 데이터프레임의 열 이름 출력
@@ -76,6 +96,12 @@ if uploaded_file:
     requester_name = st.text_input("이름")
     requester_email = st.text_input("이메일")
     requester_phone = st.text_input("전화번호")
+
+    # 예산 데이터 분석
+    if st.button('예산 데이터 분석'):
+        analysis_result = analyze_budget_data(df)
+        st.write("예산 데이터 분석 결과:")
+        st.write(analysis_result)
 
     # 데이터 저장 버튼
     if st.button('데이터베이스에 저장'):
