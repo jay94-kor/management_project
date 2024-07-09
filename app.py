@@ -5,7 +5,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import streamlit as st
 import asyncio
 import pandas as pd
-from services.google_drive import monitor_and_convert
+from services.google_drive import get_project_list
 from services.google_sheets import read_sheet_data, sync_data_with_db
 from database.db import create_connection, create_table, fetch_all_data, insert_data, update_data, delete_data
 from utils.openai_utils import classify_data
@@ -22,17 +22,20 @@ async def main():
     conn = create_connection("budget.db")
     create_table(conn)
 
+    # 구글 드라이브 폴더 ID
+    folder_id = st.secrets["google_drive"]["folder_id"]
+
     # 프로젝트 목록 표시
     st.subheader("프로젝트 목록")
-    projects = fetch_all_data(conn)
-    project_names = [project[1] for project in projects]  # 프로젝트 이름 추출
+    projects = await get_project_list(folder_id)
+    project_names = [f"{project['code']}_{project['name']}" for project in projects]
     selected_project = st.selectbox("프로젝트를 선택하세요", project_names)
 
     if selected_project:
         st.write(f"선택된 프로젝트: {selected_project}")
 
         # 프로젝트 세부 정보 및 대시보드 표시
-        project_data = [project for project in projects if project[1] == selected_project]
+        project_data = [project for project in projects if f"{project['code']}_{project['name']}" == selected_project]
         create_dashboard(project_data)
 
         # 파일 업로드 및 데이터 분류

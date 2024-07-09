@@ -28,27 +28,14 @@ async def list_files_in_folder(folder_id):
         logger.error(f"Error listing files: {e}")
         return []
 
-async def convert_xlsx_to_sheet(file_id):
-    file_metadata = {
-        'name': 'ConvertedSpreadsheet',
-        'mimeType': 'application/vnd.google-apps.spreadsheet'
-    }
-    try:
-        file = await asyncio.to_thread(
-            service.files().copy(fileId=file_id, body=file_metadata, fields='id').execute
-        )
-        return file.get('id')
-    except Exception as e:
-        logger.error(f"Error converting file: {e}")
-        return None
-
-async def monitor_and_convert(folder_id):
-    while True:
-        files = await list_files_in_folder(folder_id)
-        for file in files:
-            logger.info(f"Found file: {file['name']} (ID: {file['id']})")
-            spreadsheet_id = await convert_xlsx_to_sheet(file['id'])
-            if spreadsheet_id:
-                logger.info(f"Converted to Google Sheets: {spreadsheet_id}")
-                return spreadsheet_id
-        await asyncio.sleep(60)  # 1분마다 확인
+async def get_project_list(folder_id):
+    files = await list_files_in_folder(folder_id)
+    projects = []
+    for file in files:
+        project_code, project_name = file['name'].split('_', 1)
+        projects.append({
+            'id': file['id'],
+            'name': project_name,
+            'code': project_code
+        })
+    return projects
