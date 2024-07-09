@@ -177,17 +177,17 @@ def analyze_excel(df):
     converted_data = response.choices[0].message.content.strip()
     
     try:
-            # CSV 문자열을 StringIO 객체로 변환
-            csv_data = StringIO(converted_data)
-            # 헤더 없이 CSV 파일 읽기
-            converted_df = pd.read_csv(csv_data, header=None, names=['대분류', '항목명', '단가', '개수1', '단위1', '개수2', '단위2', '배정예산'])
-        except Exception as e:
-            st.error(f"데이터 변환 중 오류 발생: {e}")
-            st.text("API 응답:")
-            st.text(converted_data)
-            return None
-        
-        return converted_df
+        # CSV 문자열을 StringIO 객체로 변환
+        csv_data = StringIO(converted_data)
+        # 헤더 없이 CSV 파일 읽기
+        converted_df = pd.read_csv(csv_data, header=None, names=['대분류', '항목명', '단가', '개수1', '단위1', '개수2', '단위2', '배정예산'])
+    except Exception as e:
+        st.error(f"데이터 변환 중 오류 발생: {e}")
+        st.text("API 응답:")
+        st.text(converted_data)
+        return None
+    
+    return converted_df
 
 def upload_excel()
     st.subheader("엑셀 파일 업로드")
