@@ -225,17 +225,14 @@ def analyze_excel(df):
     df_str = df.to_string()
     
     # OpenAI API를 사용하여 데이터 분석
-    response = openai.ChatCompletion.create(
+    response = openai.Completion.create(
         model="gpt-4o",
-        messages=[
-            {"role": "system", "content": "You are a data analyst."},
-            {"role": "user", "content": f"Analyze this Excel data and convert it to the format with columns: 대분류, 항목명, 단가, 개수1, 단위1, 개수2, 단위2, 배정예산. Here's the data:\n\n{df_str}"}
-        ],
+        prompt=f"Analyze this Excel data and convert it to the format with columns: 대분류, 항목명, 단가, 개수1, 단위1, 개수2, 단위2, 배정예산. Here's the data:\n\n{df_str}",
         max_tokens=1500
     )
     
     # API 응답에서 변환된 데이터 추출
-    converted_data = response.choices[0].message['content'].strip()
+    converted_data = response.choices[0].text.strip()
     
     # 변환된 데이터를 데이프레임으로 변환
     converted_df = pd.read_csv(BytesIO(converted_data.encode()), sep='\s+')
