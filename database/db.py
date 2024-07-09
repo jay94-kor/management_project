@@ -112,7 +112,7 @@ def approve_expense(expense_id):
     finally:
         conn.close()
 
-def reject_expense_db(expense_id):
+def reject_expense(expense_id):
     """지출을 거부합니다."""
     conn = create_connection()
     if conn is None:
