@@ -1,10 +1,21 @@
 from pydrive2.auth import GoogleAuth
 from pydrive2.drive import GoogleDrive
 import streamlit as st
+import json
+import os
 
 def authenticate_drive():
     gauth = GoogleAuth()
-    gauth.DEFAULT_SETTINGS['client_config_file'] = "credentials/client_secrets.json"
+    
+    # Streamlit 시크릿에서 클라이언트 설정 정보 가져오기
+    client_config = json.loads(st.secrets["gcp_service_account"]["client_config"])
+    client_secrets_file = "client_secrets.json"
+    
+    # 클라이언트 설정 정보를 파일로 저장
+    with open(client_secrets_file, 'w') as f:
+        json.dump(client_config, f)
+    
+    gauth.DEFAULT_SETTINGS['client_config_file'] = client_secrets_file
     gauth.LoadCredentialsFile("credentials/mycreds.txt")
     
     if gauth.credentials is None:
@@ -15,6 +26,10 @@ def authenticate_drive():
         gauth.Authorize()
     
     gauth.SaveCredentialsFile("credentials/mycreds.txt")
+    
+    # 임시 파일 삭제
+    os.remove(client_secrets_file)
+    
     drive = GoogleDrive(gauth)
     return drive
 
