@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from database.db import create_connection  # create_connection으로 변경
 from utils.excel_utils import load_excel_data
-from utils.auth import login
+from utils.account_management import login, register, is_admin, grant_admin
 from utils.budget_calculations import calculate_remaining_amount, handle_over_budget
 from openai import OpenAI
 import json
@@ -10,7 +10,6 @@ import ast
 from services.project_service import get_projects, add_expense
 from services.google_sheets_service import sync_data_with_sheets
 from utils.dashboard import create_budget_dashboard, create_projects_comparison_dashboard
-from utils.account_management import login, register, is_admin, grant_admin
 
 # Streamlit 앱 레이아웃
 st.title('예산 관리 자동화 시스템')
@@ -51,30 +50,51 @@ if uploaded_file:
     if not openai_api_key:
         st.error("OpenAI API 키가 설정되지 않았습니다. Streamlit 시크릿에 API 키를 추가해주세요.")
     else:
-        client = OpenAI(api_key=openai_api_key)
+        try:
+            client = OpenAI(api_key=openai_api_key)
+        except Exception as e:
+            st.error(f"OpenAI 클라이언트 초기화 오류: {str(e)}")
+            client = None
 
+    if client:
         df = load_excel_data(uploaded_file)
         
-    def analyze_and_structure_data(df):
-        df_summary = f"Columns: {', '.join(df.columns)}\n"
-        df_summary += f"Shape: {df.shape}\n"
-        df_summary += f"Sample data:\n{df.head().to_string()}"
-        
-        try:
-            response = client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": "엑셀 데이터를 분석하고 주어진 DB 구조에 맞게 정리하세요."},
-                    {"role": "user", "content": f"다음 엑셀 데이터를 'budget_items' 테이블 구조에 맞게 정리하세요: id, project_name, category, item, description, quantity, specification, input_rate, unit_price, amount, allocated_amount, budget_item, settled_amount, expected_unit_price, ordered_amount, difference, profit_rate, company_name, partner_registered, unregistered_reason, remarks, remaining_amount. 파이썬 딕셔너리 리스트로 반환하세요.\n\n{df_summary}"}
-                ],
-                max_tokens=3000
-            )
+        def analyze_and_structure_data(df):
+            df_summary = f"Columns: {', '.join(df.columns)}\n"
+            df_summary += f"Shape: {df.shape}\n"
+            df_summary += f"Sample data:\n{df.head().to_string()}"
             
-            structured_data = eval(response.choices[0].message.content)
-            return structured_data
-        except Exception as e:
-            st.error(f"OpenAI API 오류: {str(e)}")
-            return None
+            try:
+                response = client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[
+                        {"role": "system", "content": "엑셀 데이터를 분석하고 주어진 DB 구조에 맞게 정리하세요."},
+                        {"role": "user", "content": f"다음 엑셀 데이터를 'budget_items' 테이블 구조에 맞게 정리하세요: id, project_name, category, item, description, quantity, specification, input_rate, unit_price, amount, allocated_amount, budget_item, settled_amount, expected_unit_price, ordered_amount, difference, profit_rate, company_name, partner_registered, unregistered_reason, remarks, remaining_amount. 파이썬 딕셔너리 리스트로 반환하세요.\n\n{df_summary}"}
+                    ],
+                    max_tokens=3000
+                )
+                
+                structured_data = eval(response.choices[0].message.content)
+                return structured_data
+            except Exception as e:
+                st.error(f"OpenAI API 오류: {str(e)}")
+                return None
+
+        structured_data = analyze_and_structure_data(df)
+        if structured_data:
+            conn = create_connection("budget.db")
+            cursor = conn.cursor()
+            for item in structured_data:
+                cursor.execute('''
+                    INSERT INTO budget_items (project_name, category, item, description, quantity, specification, 
+                    input_rate, unit_price, amount, allocated_amount, budget_item, settled_amount, 
+                    expected_unit_price, ordered_amount, difference, profit_rate, company_name, 
+                    partner_registered, unregistered_reason, remarks, remaining_amount)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', tuple(item.values()))
+            conn.commit()
+            conn.close()
+            st.success("데이터가 성공적으로 분석되고 데이터베이스에 저장되었습니다.")
 
     # 데이터베이스에서 데이터 가져오기
     conn = create_connection("budget.db")  # 데이터베이스 파일명 추가

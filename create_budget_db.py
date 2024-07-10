@@ -55,6 +55,34 @@ def create_tables(conn):
                 FOREIGN KEY (project_id) REFERENCES projects (id)
             )
         ''')
+
+        # budget_items 테이블 생성
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS budget_items (
+                id INTEGER PRIMARY KEY,
+                project_name TEXT,
+                category TEXT,
+                item TEXT,
+                description TEXT,
+                quantity REAL,
+                specification TEXT,
+                input_rate REAL,
+                unit_price REAL,
+                amount REAL,
+                allocated_amount REAL,
+                budget_item TEXT,
+                settled_amount REAL,
+                expected_unit_price REAL,
+                ordered_amount REAL,
+                difference REAL,
+                profit_rate REAL,
+                company_name TEXT,
+                partner_registered BOOLEAN,
+                unregistered_reason TEXT,
+                remarks TEXT,
+                remaining_amount REAL
+            )
+        ''')
         
         conn.commit()
         logger.info("테이블이 성공적으로 생성되었습니다.")
