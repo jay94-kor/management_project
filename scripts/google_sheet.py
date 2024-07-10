@@ -5,7 +5,7 @@ import json
 
 def get_google_sheet(sheet_id):
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    service_account_info = json.loads(st.secrets["gcp_service_account"])
+    service_account_info = json.loads(json.dumps(st.secrets["gcp_service_account"]))
     creds = Credentials.from_service_account_info(service_account_info, scopes=scope)
     client = gspread.authorize(creds)
     sheet = client.open_by_key(sheet_id).sheet1
