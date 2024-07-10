@@ -11,6 +11,17 @@ def get_google_sheet(sheet_id):
     sheet = client.open_by_key(sheet_id).sheet1
     return sheet
 
+def get_sheet_id(sheet_name):
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    service_account_info = json.loads(st.secrets["gcp_service_account"]["service_account_info"])
+    creds = Credentials.from_service_account_info(service_account_info, scopes=scope)
+    client = gspread.authorize(creds)
+    sheet_list = client.openall()
+    for sheet in sheet_list:
+        if sheet.title == sheet_name:
+            return sheet.id
+    raise FileNotFoundError(f"Sheet named '{sheet_name}' not found in Google Sheets.")
+
 # 예시 사용법
 if __name__ == "__main__":
     sheet_id = "16MdrQJghAOhA4XTdDqLaHHf5IuSx5iGe"
