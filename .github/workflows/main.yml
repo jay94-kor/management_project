@@ -27,8 +27,8 @@ jobs:
         env:
           GCP_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
         run: |
-          echo $GCP_SERVICE_ACCOUNT > credentials/service_account.json
-
+          echo $GCP_SERVICE_ACCOUNT > credentials/service_account.json  # 경로 확인
+          
       - name: Run application
         run: |
           streamlit run app.py
