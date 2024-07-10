@@ -5,7 +5,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def create_connection(db_file):
+def create_connection(db_file="budget.db"):
     """데이터베이스 연결을 생성합니다."""
     try:
         conn = sqlite3.connect(db_file)

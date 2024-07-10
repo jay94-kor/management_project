@@ -74,6 +74,7 @@ if uploaded_file:
                     max_tokens=3000
                 )
                 
+                st.write(response)  # OpenAI API 응답 출력
                 structured_data = json.loads(response.choices[0].message.content)
                 return structured_data
             except Exception as e:
@@ -90,7 +91,7 @@ if uploaded_file:
                     input_rate, unit_price, amount, allocated_amount, budget_item, settled_amount, 
                     expected_unit_price, ordered_amount, difference, profit_rate, company_name, 
                     partner_registered, unregistered_reason, remarks, remaining_amount)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', tuple(item.values()))
             conn.commit()
             conn.close()
