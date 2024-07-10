@@ -3,7 +3,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 
 def get_google_sheet(sheet_id):
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_name('credentials/service_account.json', scope)  # 경로 수정
+    creds = ServiceAccountCredentials.from_json_keyfile_name('credentials/service_account.json', scope)
     client = gspread.authorize(creds)
     sheet = client.open_by_key(sheet_id).sheet1
     return sheet

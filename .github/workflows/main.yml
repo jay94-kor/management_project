@@ -27,7 +27,7 @@ jobs:
         env:
           GCP_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
         run: |
-          echo $GCP_SERVICE_ACCOUNT > credentials/service_account.json  # 경로 확인
+          echo $GCP_SERVICE_ACCOUNT > credentials/service_account.json
           
       - name: Run application
         run: |

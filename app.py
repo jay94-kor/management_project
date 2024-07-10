@@ -18,7 +18,10 @@ elif page == "Budget Management":
 sheet_id = st.text_input("Enter Google Sheet ID", "16MdrQJghAOhA4XTdDqLaHHf5IuSx5iGe")
 
 if sheet_id:
-    sheet = get_google_sheet(sheet_id)
-    data = sheet.get_all_records()
-    st.write("Google Sheet Data:")
-    st.write(data)
+    try:
+        sheet = get_google_sheet(sheet_id)
+        data = sheet.get_all_records()
+        st.write("Google Sheet Data:")
+        st.write(data)
+    except Exception as e:
+        st.error(f"Error occurred while fetching Google Sheet data: {e}")
