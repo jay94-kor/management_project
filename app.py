@@ -2,9 +2,9 @@ import streamlit as st
 from pages.home import home_page
 from pages.project import project_page
 from pages.budget import budget_page
-from scripts.google_sheet import get_google_sheet, get_sheet_id
+from scripts.google_sheet import get_google_sheet
+from scripts.google_drive import list_drive_files, upload_to_drive
 from scripts.excel_upload import read_excel
-from scripts.google_drive import upload_to_drive, get_file_id
 
 st.sidebar.title("Navigation")
 page = st.sidebar.radio("Go to", ["Home", "Project Management", "Budget Management"])
@@ -16,13 +16,20 @@ elif page == "Project Management":
 elif page == "Budget Management":
     budget_page()
 
-# 구글 시트 이름 입력 받기
-sheet_name = st.text_input("Enter Google Sheet Name", "예산 배정 및 정산서")
+# Google Drive 파일 목록 가져오기
+drive_files = list_drive_files()
 
-if sheet_name:
+# 파일 선택 드롭다운 만들기
+selected_file = st.selectbox(
+    "Select a file from Google Drive",
+    options=[file['title'] for file in drive_files],
+    format_func=lambda x: x
+)
+
+if selected_file:
+    selected_file_id = next(file['id'] for file in drive_files if file['title'] == selected_file)
     try:
-        sheet_id = get_sheet_id(sheet_name)
-        sheet = get_google_sheet(sheet_id)
+        sheet = get_google_sheet(selected_file_id)
         data = sheet.get_all_records()
         st.write("Google Sheet Data:")
         st.write(data)
