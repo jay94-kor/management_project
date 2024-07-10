@@ -15,4 +15,6 @@ def get_google_sheet(sheet_id):
 if __name__ == "__main__":
     sheet_id = "16MdrQJghAOhA4XTdDqLaHHf5IuSx5iGe"
     sheet = get_google_sheet(sheet_id)
-    print(sheet.get_all_records())
+    data = sheet.get_all_records()
+    st.write("Google Sheet Data:")
+    st.write(data)
