@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from database.db import get_db_connection  # insert_data_to_db 제거
+from database.db import create_connection  # create_connection으로 변경
 from utils.excel_utils import load_excel_data
 from utils.auth import login
 from utils.budget_calculations import calculate_remaining_amount, handle_over_budget
@@ -77,7 +77,7 @@ if uploaded_file:
             return None
 
     # 데이터베이스에서 데이터 가져오기
-    conn = get_db_connection()
+    conn = create_connection("budget.db")  # 데이터베이스 파일명 추가
     df_db = pd.read_sql_query("SELECT * FROM budget_items", conn)
     conn.close()
 
@@ -94,7 +94,7 @@ if uploaded_file:
     # 수정 요청 및 승인 기능 구현
     if st.session_state.logged_in:
         st.write("수정 요청 및 승인")
-        conn = get_db_connection()
+        conn = create_connection("budget.db")  # 데이터베이스 파일명 추가
         modification_requests = pd.read_sql_query("SELECT * FROM modification_requests WHERE status = 'Pending'", conn)
         conn.close()
         if not modification_requests.empty:
@@ -103,7 +103,7 @@ if uploaded_file:
             selected_request_id = st.selectbox("승인할 수정 요청을 선택하세요", modification_requests['id'].tolist())
             approver_name = st.text_input("승인자 이름")
             if st.button('승인'):
-                conn = get_db_connection()
+                conn = create_connection("budget.db")  # 데이터베이스 파일명 추가
                 cursor = conn.cursor()
                 cursor.execute("UPDATE modification_requests SET status = 'Approved', approval_date = date('now'), approver_name = ? WHERE id = ?", (approver_name, selected_request_id))
                 conn.commit()
@@ -111,10 +111,3 @@ if uploaded_file:
                 st.success("수정 요청이 승인되었습니다.")
         else:
             st.write("승인 대기 중인 수정 요청이 없습니다.")
-
-    # 데이터베이스에 저장된 데이터 표시
-    st.write('데이터베이스에 저장된 예산 항목:')
-    conn = get_db_connection()
-    df_db = pd.read_sql_query("SELECT * FROM budget_items", conn)
-    conn.close()
-    st.dataframe(df_db)
