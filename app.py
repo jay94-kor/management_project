@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from database.db import get_db_connection, insert_data_to_db  # 경로 수정
+from database.db import get_db_connection  # insert_data_to_db 제거
 from utils.excel_utils import load_excel_data
 from utils.auth import login
 from utils.budget_calculations import calculate_remaining_amount, handle_over_budget
@@ -11,8 +11,6 @@ from services.project_service import get_projects, add_expense
 from services.google_sheets_service import sync_data_with_sheets
 from utils.dashboard import create_budget_dashboard, create_projects_comparison_dashboard
 from utils.account_management import login, register, is_admin, grant_admin
-
-# ... 기존 코드 ...
 
 # Streamlit 앱 레이아웃
 st.title('예산 관리 자동화 시스템')
