@@ -1,8 +1,10 @@
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 import streamlit as st
+from googleapiclient.http import MediaIoBaseUpload
+import io
 
-SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
+SCOPES = ['https://www.googleapis.com/auth/drive']
 
 def authenticate_drive():
     creds = service_account.Credentials.from_service_account_info(
@@ -25,3 +27,10 @@ def get_file_metadata(file_id):
         'modified_date': file['modifiedTime'],
         'created_date': file['createdTime']
     }
+
+def upload_to_drive(file):
+    service = authenticate_drive()
+    file_metadata = {'name': file.name}
+    media = MediaIoBaseUpload(io.BytesIO(file.getvalue()), mimetype=file.type)
+    file = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+    return file.get('id')
