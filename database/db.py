@@ -5,10 +5,10 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def create_connection():
+def create_connection(db_file="budget.db"):
     """데이터베이스 연결을 생성합니다."""
     try:
-        conn = sqlite3.connect("budget.db")
+        conn = sqlite3.connect(db_file)
         return conn
     except sqlite3.Error as e:
         logger.error(f"데이터베이스 연결 오류: {e}")

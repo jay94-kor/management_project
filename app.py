@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from database.db import create_connection  # create_connection으로 변경
+from database.db import create_connection
 from utils.excel_utils import load_excel_data
 from utils.account_management import login, register, is_admin, grant_admin
 from utils.budget_calculations import calculate_remaining_amount, handle_over_budget
@@ -74,7 +74,7 @@ if uploaded_file:
                     max_tokens=3000
                 )
                 
-                structured_data = eval(response.choices[0].message.content)
+                structured_data = json.loads(response.choices[0].message.content)
                 return structured_data
             except Exception as e:
                 st.error(f"OpenAI API 오류: {str(e)}")
@@ -97,7 +97,7 @@ if uploaded_file:
             st.success("데이터가 성공적으로 분석되고 데이터베이스에 저장되었습니다.")
 
     # 데이터베이스에서 데이터 가져오기
-    conn = create_connection("budget.db")  # 데이터베이스 파일명 추가
+    conn = create_connection("budget.db")
     df_db = pd.read_sql_query("SELECT * FROM budget_items", conn)
     conn.close()
 
@@ -114,7 +114,7 @@ if uploaded_file:
     # 수정 요청 및 승인 기능 구현
     if st.session_state.logged_in:
         st.write("수정 요청 및 승인")
-        conn = create_connection("budget.db")  # 데이터베이스 파일명 추가
+        conn = create_connection("budget.db")
         modification_requests = pd.read_sql_query("SELECT * FROM modification_requests WHERE status = 'Pending'", conn)
         conn.close()
         if not modification_requests.empty:
@@ -123,7 +123,7 @@ if uploaded_file:
             selected_request_id = st.selectbox("승인할 수정 요청을 선택하세요", modification_requests['id'].tolist())
             approver_name = st.text_input("승인자 이름")
             if st.button('승인'):
-                conn = create_connection("budget.db")  # 데이터베이스 파일명 추가
+                conn = create_connection("budget.db")
                 cursor = conn.cursor()
                 cursor.execute("UPDATE modification_requests SET status = 'Approved', approval_date = date('now'), approver_name = ? WHERE id = ?", (approver_name, selected_request_id))
                 conn.commit()
