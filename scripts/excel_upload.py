@@ -32,6 +32,12 @@ def read_excel(file_path):
     items = df.iloc[7:, [0, 1, 2, 3, 5, 6, 7, 9, 11, 12, 13]]
     items.columns = ["category", "subcategory", "item", "description", "quantity", "spec", "days", "times", "unit_price", "assigned_budget", "proposed_price"]
     
+    # 병합된 셀 처리
+    items = items.ffill()
+    
+    # "소계" 키워드가 포함된 행 제외
+    items = items[~items["item"].str.contains("소계", na=False)]
+    
     return project_info, items
 
 # 예시 사용법
