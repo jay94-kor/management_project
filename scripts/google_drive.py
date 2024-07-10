@@ -1,57 +1,27 @@
-from pydrive2.auth import GoogleAuth
-from pydrive2.drive import GoogleDrive
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
 import streamlit as st
-import json
-import os
+
+SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
 
 def authenticate_drive():
-    gauth = GoogleAuth()
-    
-    # Streamlit 시크릿에서 클라이언트 설정 정보 가져오기
-    service_account_info = st.secrets["gcp_service_account"]
-    
-    # 서비스 계정 인증 설정
-    settings = {
-        "client_config_backend": "service_account",
-        "service_account_info": service_account_info
-    }
-    
-    gauth.settings.update(settings)
-    gauth.ServiceAuth()
-    
-    drive = GoogleDrive(gauth)
-    return drive
-
-def upload_to_drive(file):
-    drive = authenticate_drive()
-    
-    # 파일 업로드
-    gfile = drive.CreateFile({'title': file.name})
-    gfile.SetContentFile(file.name)
-    gfile.Upload()
-    
-    return gfile['id']
-
-def get_file_id(file_name):
-    drive = authenticate_drive()
-    file_list = drive.ListFile({'q': f"title='{file_name}' and trashed=false"}).GetList()
-    if file_list:
-        return file_list[0]['id']
-    else:
-        raise FileNotFoundError(f"File named '{file_name}' not found in Google Drive.")
+    creds = service_account.Credentials.from_service_account_info(
+        st.secrets["gcp_service_account"],
+        scopes=SCOPES
+    )
+    return build('drive', 'v3', credentials=creds)
 
 def list_drive_files(folder_id):
-    drive = authenticate_drive()
-    query = f"'{folder_id}' in parents and trashed=false and mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'"
-    file_list = drive.ListFile({'q': query}).GetList()
-    return [{'title': file['title'], 'id': file['id']} for file in file_list]
+    service = authenticate_drive()
+    query = f"'{folder_id}' in parents and mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'"
+    results = service.files().list(q=query, fields="files(id, name, modifiedTime, createdTime)").execute()
+    return results.get('files', [])
 
 def get_file_metadata(file_id):
-    drive = authenticate_drive()
-    file = drive.CreateFile({'id': file_id})
-    file.FetchMetadata(fields='title, modifiedDate, createdDate')
+    service = authenticate_drive()
+    file = service.files().get(fileId=file_id, fields='name, modifiedTime, createdTime').execute()
     return {
-        'title': file['title'],
-        'modified_date': file['modifiedDate'],
-        'created_date': file['createdDate']
+        'title': file['name'],
+        'modified_date': file['modifiedTime'],
+        'created_date': file['createdTime']
     }
