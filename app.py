@@ -4,6 +4,7 @@ from pages.project import project_page
 from pages.budget import budget_page
 from scripts.google_sheet import get_google_sheet
 from scripts.excel_upload import read_excel
+from scripts.google_drive import upload_to_drive
 
 st.sidebar.title("Navigation")
 page = st.sidebar.radio("Go to", ["Home", "Project Management", "Budget Management"])
@@ -37,5 +38,9 @@ if uploaded_file:
         st.write(project_info)
         st.write("Items Data:")
         st.write(items)
+        
+        # Google Drive에 파일 업로드
+        file_id = upload_to_drive(uploaded_file)
+        st.success(f"File uploaded to Google Drive with ID: {file_id}")
     except Exception as e:
         st.error(f"Error occurred while reading Excel file: {e}")

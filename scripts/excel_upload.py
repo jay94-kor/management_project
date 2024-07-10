@@ -29,8 +29,8 @@ def read_excel(file_path):
     }
     
     # 항목 데이터 추출
-    items = df.iloc[7:, [0, 1, 2, 3, 5, 6, 7, 9, 11, 12, 13]]
-    items.columns = ["category", "subcategory", "item", "description", "quantity", "spec", "days", "times", "unit_price", "assigned_budget", "proposed_price"]
+    items = df.iloc[7:, [0, 1, 2, 3, 5, 6, 7, 9, 11, 12]]
+    items.columns = ["category", "subcategory", "item", "description", "quantity", "spec", "days", "times", "unit_price", "assigned_budget"]
     
     # 병합된 셀 처리
     items = items.ffill()
