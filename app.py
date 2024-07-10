@@ -34,10 +34,12 @@ for index, file in enumerate(drive_files):
         st.write(f"Created: {metadata['created_date']}")
         if st.button(f"View {metadata['title']}", key=file['id']):
             try:
-                sheet = get_google_sheet(file['id'])
-                data = sheet.get_all_records()
-                st.write("Google Sheet Data:")
-                st.write(data)
+                sheet_data = get_google_sheet(file['id'])
+                st.write("Project Info:")
+                st.write(sheet_data["project_info"])
+                st.write("Items Data:")
+                st.write(sheet_data["items"])
+                st.write(f"Total Budget: {sheet_data['total_budget']}")
             except Exception as e:
                 st.error(f"Error occurred while fetching Google Sheet data: {e}")
 
