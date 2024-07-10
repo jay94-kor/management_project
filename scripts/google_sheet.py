@@ -21,11 +21,3 @@ def get_sheet_id(sheet_name):
         if sheet.title == sheet_name:
             return sheet.id
     raise FileNotFoundError(f"Sheet named '{sheet_name}' not found in Google Sheets.")
-
-# 예시 사용법
-if __name__ == "__main__":
-    sheet_id = "16MdrQJghAOhA4XTdDqLaHHf5IuSx5iGe"
-    sheet = get_google_sheet(sheet_id)
-    data = sheet.get_all_records()
-    st.write("Google Sheet Data:")
-    st.write(data)

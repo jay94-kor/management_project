@@ -8,12 +8,12 @@ def authenticate_drive():
     gauth = GoogleAuth()
     
     # Streamlit 시크릿에서 클라이언트 설정 정보 가져오기
-    client_config = json.loads(st.secrets["gcp_service_account"]["client_config"])
+    service_account_info = json.loads(st.secrets["gcp_service_account"]["service_account_info"])
     client_secrets_file = "client_secrets.json"
     
     # 클라이언트 설정 정보를 파일로 저장
     with open(client_secrets_file, 'w') as f:
-        json.dump(client_config, f)
+        json.dump(service_account_info, f)
     
     gauth.DEFAULT_SETTINGS['client_config_file'] = client_secrets_file
     gauth.LoadCredentialsFile("credentials/mycreds.txt")
