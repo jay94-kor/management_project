@@ -38,6 +38,12 @@ def read_excel(file_path):
     # "소계" 키워드가 포함된 행 제외
     items = items[~items["item"].str.contains("소계", na=False)]
     
+    # unit_price가 0인 행 제외
+    items = items[items["unit_price"] != 0]
+    
+    # subcategory에서 "VAT", "기업이윤", "일반관리비" 관련 행 제외
+    items = items[~items["subcategory"].str.contains("VAT|기업이윤|일반관리비", na=False)]
+    
     return project_info, items
 
 # 예시 사용법
