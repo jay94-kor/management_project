@@ -40,7 +40,18 @@ def get_file_id(file_name):
     else:
         raise FileNotFoundError(f"File named '{file_name}' not found in Google Drive.")
 
-def list_drive_files():
+def list_drive_files(folder_id):
     drive = authenticate_drive()
-    file_list = drive.ListFile({'q': "'root' in parents and trashed=false"}).GetList()
-    return [{'title': file['title'], 'id': file['id']} for file in file_list if file['mimeType'] == 'application/vnd.google-apps.spreadsheet']
+    query = f"'{folder_id}' in parents and trashed=false and mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'"
+    file_list = drive.ListFile({'q': query}).GetList()
+    return [{'title': file['title'], 'id': file['id']} for file in file_list]
+
+def get_file_metadata(file_id):
+    drive = authenticate_drive()
+    file = drive.CreateFile({'id': file_id})
+    file.FetchMetadata(fields='title, modifiedDate, createdDate')
+    return {
+        'title': file['title'],
+        'modified_date': file['modifiedDate'],
+        'created_date': file['createdDate']
+    }

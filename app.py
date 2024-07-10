@@ -3,7 +3,7 @@ from pages.home import home_page
 from pages.project import project_page
 from pages.budget import budget_page
 from scripts.google_sheet import get_google_sheet
-from scripts.google_drive import list_drive_files, upload_to_drive
+from scripts.google_drive import list_drive_files, get_file_metadata, upload_to_drive
 from scripts.excel_upload import read_excel
 
 st.sidebar.title("Navigation")
@@ -16,35 +16,30 @@ elif page == "Project Management":
 elif page == "Budget Management":
     budget_page()
 
+# Google Drive 폴더 ID (Streamlit secrets에서 가져오기)
+folder_id = st.secrets["google_drive"]["folder_id"]
+
 # Google Drive 파일 목록 가져오기
-drive_files = list_drive_files()
+drive_files = list_drive_files(folder_id)
 
-# 파일 선택 드롭다운 만들기
-selected_file = st.selectbox(
-    "Select a file from Google Drive",
-    options=[file['title'] for file in drive_files],
-    format_func=lambda x: x
-)
+# 파일 카드 생성
+st.write("## Project Files")
+cols = st.columns(3)  # 3열로 카드 배치
 
-if selected_file:
-    selected_file_id = next(file['id'] for file in drive_files if file['title'] == selected_file)
-    try:
-        sheet = get_google_sheet(selected_file_id)
-        data = sheet.get_all_records()
-        st.write("Google Sheet Data:")
-        st.write(data)
-    except Exception as e:
-        st.error(f"Error occurred while fetching Google Sheet data: {e}")
-
-# 구글 드라이브 파일 이름 입력 받기
-file_name = st.text_input("Enter Google Drive File Name", "example.xlsx")
-
-if file_name:
-    try:
-        file_id = get_file_id(file_name)
-        st.success(f"File ID: {file_id}")
-    except Exception as e:
-        st.error(f"Error occurred while fetching Google Drive file ID: {e}")
+for index, file in enumerate(drive_files):
+    with cols[index % 3]:
+        metadata = get_file_metadata(file['id'])
+        st.write(f"### {metadata['title']}")
+        st.write(f"Modified: {metadata['modified_date']}")
+        st.write(f"Created: {metadata['created_date']}")
+        if st.button(f"View {metadata['title']}", key=file['id']):
+            try:
+                sheet = get_google_sheet(file['id'])
+                data = sheet.get_all_records()
+                st.write("Google Sheet Data:")
+                st.write(data)
+            except Exception as e:
+                st.error(f"Error occurred while fetching Google Sheet data: {e}")
 
 # 엑셀 파일 업로드
 uploaded_file = st.file_uploader("Upload Excel File", type=["xlsx"])
