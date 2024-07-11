@@ -19,11 +19,13 @@ def create_dashboard():
     ax.pie(spent_budgets, labels=project_names, autopct='%1.1f%%')
     ax.axis('equal')
 
-    # 차트를 이미지로 변환
-    img = io.BytesIO()
-    plt.savefig(img, format='png')
-    img.seek(0)
-    chart_url = base64.b64encode(img.getvalue()).decode()
+    # 차트를 Streamlit에 표시
+    st.pyplot(fig)
 
-    st.image(img, caption='Project Budget Distribution')
-    st.write(projects)
+    # 프로젝트 정보 표시
+    for project in projects:
+        st.write(f"프로젝트: {project.name}")
+        st.write(f"배정 예산: {project.assigned_budget}")
+        st.write(f"사용 예산: {project.spent_budget}")
+        st.write(f"남은 예산: {project.remaining_budget}")
+        st.write("---")
