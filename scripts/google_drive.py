@@ -10,16 +10,16 @@ SCOPES = ['https://www.googleapis.com/auth/drive']
 
 def authenticate_drive():
     # 환경 변수에서 서비스 계정 정보 읽기
-    service_account_info = json.loads(os.environ.get('GOOGLE_APPLICATION_CREDENTIALS_JSON', '{}'))
+    service_account_info = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS_JSON', '{}')
     
     # Streamlit Secrets에서 읽기 (Streamlit Cloud 사용 시)
-    if not service_account_info:
+    if not service_account_info or service_account_info == '{}':
         service_account_info = st.secrets.get("gcp_service_account", {})
     
     if not service_account_info:
         raise ValueError("서비스 계정 정보를 찾을 수 없습니다.")
 
-    print("Service Account Info:", service_account_info.keys())  # 디버깅용
+    print("Service Account Info:", service_account_info)  # 디버깅용
 
     # service_account_info가 문자열인 경우 JSON으로 파싱
     if isinstance(service_account_info, str):
