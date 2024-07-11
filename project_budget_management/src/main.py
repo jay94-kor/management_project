@@ -1,8 +1,8 @@
-from flask import Flask
+from streamlit import st
 from dashboard import create_dashboard
 
-app = Flask(__name__)
-create_dashboard(app)
+def main():
+    create_dashboard()
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    main()
