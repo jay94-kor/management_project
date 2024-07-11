@@ -2,9 +2,12 @@ import pandas as pd
 from google_sheet import read_google_sheet
 from database import init_db, add_project
 import os
+from dotenv import load_dotenv
 
-SHEET_ID = 'your_google_sheet_id'
-RANGE_NAME = 'Sheet1!A1:Z1000'
+load_dotenv()
+
+SHEET_ID = os.getenv('GOOGLE_SHEET_ID')
+RANGE_NAME = os.getenv('GOOGLE_SHEET_RANGE')
 
 def load_initial_data():
     values = read_google_sheet(SHEET_ID, RANGE_NAME)

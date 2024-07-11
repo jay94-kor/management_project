@@ -1,12 +1,13 @@
 import unittest
+from unittest.mock import patch
 from google_sheet import read_google_sheet
 
 class TestGoogleSheet(unittest.TestCase):
-    def test_read_google_sheet(self):
-        sheet_id = 'your_google_sheet_id'
-        range_name = 'Sheet1!A1:Z1000'
-        values = read_google_sheet(sheet_id, range_name)
-        self.assertIsInstance(values, list)
+    @patch('google_sheet.get_google_sheet_service')
+    def test_read_google_sheet(self, mock_service):
+        mock_service.return_value.spreadsheets().values().get().execute.return_value = {'values': [['test']]}
+        values = read_google_sheet('dummy_id', 'dummy_range')
+        self.assertEqual(values, [['test']])
 
 if __name__ == '__main__':
     unittest.main()

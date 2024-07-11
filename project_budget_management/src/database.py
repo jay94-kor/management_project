@@ -4,13 +4,25 @@ import base64
 from flask import Flask, render_template
 from sqlalchemy.orm import Session
 from database import Project, SessionLocal
+from contextlib import contextmanager
+
+@contextmanager
+def get_session():
+    session = SessionLocal()
+    try:
+        yield session
+        session.commit()
+    except:
+        session.rollback()
+        raise
+    finally:
+        session.close()
 
 def create_dashboard(app):
     @app.route('/')
     def index():
-        session = SessionLocal()
-        projects = session.query(Project).all()
-        session.close()
+        with get_session() as session:
+            projects = session.query(Project).all()
         
         # 차트 생성
         project_names = [project.name for project in projects]
