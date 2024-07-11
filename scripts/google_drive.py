@@ -19,6 +19,11 @@ def authenticate_drive():
     if not service_account_info:
         raise ValueError("서비스 계정 정보를 찾을 수 없습니다.")
 
+    print("Service Account Info:", service_account_info.keys())  # 디버깅용
+
+    if 'token_uri' not in service_account_info or 'client_email' not in service_account_info:
+        raise ValueError("서비스 계정 정보에 필수 필드가 누락되었습니다.")
+
     creds = service_account.Credentials.from_service_account_info(
         service_account_info,
         scopes=SCOPES
