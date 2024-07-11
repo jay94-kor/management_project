@@ -23,7 +23,7 @@ def create_table(conn, create_table_sql):
         c = conn.cursor()
         c.execute(create_table_sql)
     except sqlite3.Error as e:
-        print(e)
+        st.error(f"Error creating table: {e}")
 
 def initialize_database():
     database = "project_budget_management.db"
@@ -90,11 +90,14 @@ def initialize_database():
 
 # 로그 기록 및 조회 함수
 def log_action(conn, project_id, action, details):
-    sql = ''' INSERT INTO logs(project_id, action, timestamp, details)
-              VALUES(?,?,?,?) '''
-    cur = conn.cursor()
-    cur.execute(sql, (project_id, action, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), details))
-    conn.commit()
+    try:
+        sql = ''' INSERT INTO logs(project_id, action, timestamp, details)
+                  VALUES(?,?,?,?) '''
+        cur = conn.cursor()
+        cur.execute(sql, (project_id, action, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), details))
+        conn.commit()
+    except sqlite3.Error as e:
+        st.error(f"Error logging action: {e}")
 
 def get_logs(conn):
     cur = conn.cursor()
@@ -103,13 +106,19 @@ def get_logs(conn):
     return rows
 
 # 예산 조정 함수
-def transfer_budget_item(conn, from_item_id, to_item_id, amount):
-    cur = conn.cursor()
+def execute_query(conn, query, params=()):
+    try:
+        cur = conn.cursor()
+        cur.execute(query, params)
+        conn.commit()
+        return cur
+    except sqlite3.Error as e:
+        st.error(f"Database error: {e}")
+        return None
 
-    cur.execute("SELECT allocated_budget, actual_cost FROM budget_items WHERE id=?", (from_item_id,))
-    from_item = cur.fetchone()
-    cur.execute("SELECT allocated_budget, actual_cost FROM budget_items WHERE id=?", (to_item_id,))
-    to_item = cur.fetchone()
+def transfer_budget_item(conn, from_item_id, to_item_id, amount):
+    from_item = execute_query(conn, "SELECT allocated_budget, actual_cost FROM budget_items WHERE id=?", (from_item_id,)).fetchone()
+    to_item = execute_query(conn, "SELECT allocated_budget, actual_cost FROM budget_items WHERE id=?", (to_item_id,)).fetchone()
 
     if from_item and to_item:
         from_allocated_budget, from_actual_cost = from_item
@@ -119,11 +128,10 @@ def transfer_budget_item(conn, from_item_id, to_item_id, amount):
             new_from_allocated_budget = from_allocated_budget - amount
             new_to_allocated_budget = to_allocated_budget + amount
 
-            cur.execute("UPDATE budget_items SET allocated_budget=? WHERE id=?", (new_from_allocated_budget, from_item_id))
-            cur.execute("UPDATE budget_items SET allocated_budget=? WHERE id=?", (new_to_allocated_budget, to_item_id))
+            execute_query(conn, "UPDATE budget_items SET allocated_budget=? WHERE id=?", (new_from_allocated_budget, from_item_id))
+            execute_query(conn, "UPDATE budget_items SET allocated_budget=? WHERE id=?", (new_to_allocated_budget, to_item_id))
 
             log_action(conn, None, f"Transferred {amount} from item {from_item_id} to item {to_item_id}")
-            conn.commit()
             return True
     return False
 
@@ -299,10 +307,18 @@ def login():
     username = st.text_input("Username")
     password = st.text_input("Password", type="password")
     if st.button("Login"):
-        if username == "admin" and password == "password":
-            st.session_state['logged_in'] = True
+        conn = create_connection("project_budget_management.db")
+        if conn is not None:
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM users WHERE username=? AND password=?", (username, password))
+            user = cur.fetchone()
+            if user:
+                st.session_state['logged_in'] = True
+                st.success("Login successful")
+            else:
+                st.error("Incorrect username or password")
         else:
-            st.error("Incorrect username or password")
+            st.error("Database connection failed")
 
 # 메인 함수
 def main():
