@@ -1,7 +1,5 @@
-import matplotlib.pyplot as plt
 import io
 import base64
-from flask import Flask, render_template
 from sqlalchemy.orm import Session
 from database import Project, SessionLocal
 from contextlib import contextmanager
