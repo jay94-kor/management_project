@@ -1,4 +1,4 @@
-from streamlit import st
+import streamlit as st
 from dashboard import create_dashboard
 
 def main():
