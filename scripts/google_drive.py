@@ -14,7 +14,7 @@ def authenticate_drive():
     
     # Streamlit Secrets에서 읽기 (Streamlit Cloud 사용 시)
     if not service_account_info or service_account_info == '{}':
-        service_account_info = st.secrets.get("gcp_service_account", {})
+        service_account_info = st.secrets.get("gcp_service_account", {}).get("service_account_info", '{}')
     
     if not service_account_info:
         raise ValueError("서비스 계정 정보를 찾을 수 없습니다.")
