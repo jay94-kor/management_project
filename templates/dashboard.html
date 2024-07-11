@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Budget Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ddd; padding: 8px; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <h1>Project Budget Dashboard</h1>
+    <table>
+        <tr>
+            <th>Project Name</th>
+            <th>Assigned Budget</th>
+            <th>Spent Budget</th>
+            <th>Remaining Budget</th>
+        </tr>
+        {% for project in projects %}
+        <tr>
+            <td>{{ project.name }}</td>
+            <td>{{ project.assigned_budget }}</td>
+            <td>{{ project.spent_budget }}</td>
+            <td>{{ project.remaining_budget }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    <h2>Budget Usage Chart</h2>
+    <img src="data:image/png;base64,{{ chart_url }}" alt="Budget Usage Chart">
+</body>
+</html>
