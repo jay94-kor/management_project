@@ -21,6 +21,10 @@ def authenticate_drive():
 
     print("Service Account Info:", service_account_info.keys())  # 디버깅용
 
+    # service_account_info가 문자열인 경우 JSON으로 파싱
+    if isinstance(service_account_info, str):
+        service_account_info = json.loads(service_account_info)
+
     if 'token_uri' not in service_account_info or 'client_email' not in service_account_info:
         raise ValueError("서비스 계정 정보에 필수 필드가 누락되었습니다.")
 
