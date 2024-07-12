@@ -8,7 +8,7 @@ CREATE TABLE Project (
     department TEXT NOT NULL,
     contract_amount REAL NOT NULL,
     expected_profit REAL NOT NULL,
-    expected_profit_rate REAL GENERATED ALWAYS AS (expected_profit / contract_amount) STORED,
+    expected_profit_rate REAL GENERATED ALWAYS AS (CASE WHEN contract_amount = 0 THEN 0 ELSE expected_profit / contract_amount END) STORED,
     total_expenditure REAL DEFAULT 0,
     balance REAL GENERATED ALWAYS AS (contract_amount - total_expenditure) STORED
 );
@@ -19,10 +19,10 @@ CREATE TABLE ProjectItem (
     category TEXT NOT NULL,
     item TEXT NOT NULL,
     description TEXT,
-    quantity INTEGER,
-    unit TEXT,
-    period INTEGER,
-    period_unit TEXT,
+    quantity1 INTEGER,
+    spec1 TEXT,
+    quantity2 INTEGER,
+    spec2 TEXT,
     unit_price REAL,
     total_price REAL,
     assigned_amount REAL,

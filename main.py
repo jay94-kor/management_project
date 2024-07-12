@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from utils.db_utils import setup_database
-from services.project_service import add_project, get_projects, add_project_item, get_project_items
+from services.project_service import add_project, get_projects, add_project_item, get_project_items, update_project_budget
 from services.expenditure_service import request_expenditure, approve_expenditure
 import csv
 import io
@@ -24,14 +24,14 @@ def display_projects():
         df["예상이익률"] = df["예상이익률"].apply(lambda x: f"{x:.2f}%")
         st.dataframe(df)
     else:
-        st.info("등록된 프로젝트가 없습니다.")
+        st.info("등록된 프로젝트 없습니다.")
 
 def add_project_menu():
     st.header(MENU_PROJECT_ADD)
     with st.form("project_add_form"):
         name = st.text_input("프로젝트 이름", max_chars=100)
         company = st.text_input("발주처", max_chars=100)
-        manager = st.text_input("담당자", max_chars=50)
+        manager = st.text_input("담당���", max_chars=50)
         department = st.text_input("소속", max_chars=50)
         total_budget = st.number_input("총 예산", min_value=0)
         current_budget = st.number_input("현재 예산", min_value=0, max_value=total_budget)
@@ -140,7 +140,7 @@ def bulk_import_menu():
                 contract_amount = float(contract_amount.replace(',', '').strip())
                 expected_profit = float(expected_profit.replace(',', '').strip())
                 add_project(name, client, pm, department, contract_amount, expected_profit)
-                st.success(f"프로젝트 '{name}'가 추가되었습니다.")
+                st.success(f"���로젝트 '{name}'가 추가되었습니다.")
             except Exception as e:
                 st.error(f"프로젝트 '{name}' 추가 중 오류 발생: {str(e)}")
         
@@ -163,25 +163,27 @@ def bulk_import_project_items_menu():
             
             for row in csv_data:
                 try:
-                    category, item_name, description, quantity, unit, period, period_unit, unit_price, total_price, assigned_amount = row
+                    category, item_name, description, quantity1, spec1, quantity2, spec2, unit_price, total_price, assigned_amount = row
                     add_project_item(
                         selected_project_id,
                         category,
                         item_name,
                         description,
-                        int(quantity) if quantity else 0,
-                        unit,
-                        int(period) if period else 0,
-                        period_unit,
-                        float(unit_price.replace(',', '').strip()) if unit_price else 0,
-                        float(total_price.replace(',', '').strip()) if total_price else 0,
-                        float(assigned_amount.replace(',', '').strip()) if assigned_amount else 0
+                        int(quantity1) if quantity1 and quantity1 != '-' else 0,
+                        spec1,
+                        int(quantity2) if quantity2 and quantity2 != '-' else 0,
+                        spec2,
+                        float(unit_price.replace(',', '').strip()) if unit_price and unit_price != '-' else 0,
+                        float(total_price.replace(',', '').strip()) if total_price and total_price != '-' else 0,
+                        float(assigned_amount.replace(',', '').strip()) if assigned_amount and assigned_amount != '-' else 0
                     )
                     st.success(f"항목 '{item_name}'이(가) 추가되었습니다.")
                 except Exception as e:
                     st.error(f"항목 '{item_name}' 추가 중 오류 발생: {str(e)}")
             
-            st.success("모든 항목이 처리되었습니다.")
+            # 프로젝트 예산 정보 업데이트
+            update_project_budget(selected_project_id)
+            st.success("모든 항목이 처리되었으며, 프로젝트 예산 정보가 업데이트되었습니다.")
     else:
         st.warning("프로젝트를 먼저 선택해주세요.")
 
