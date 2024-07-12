@@ -22,22 +22,18 @@ def approve_expenditure(request_id):
     ''', (request_id,))
     
     cursor.execute('''
-    SELECT project_item_id, requested_amount FROM ExpenditureRequest
+    SELECT project_id, amount FROM ExpenditureRequest
     WHERE id = ?
     ''', (request_id,))
     request = cursor.fetchone()
     
     cursor.execute('''
-    UPDATE ProjectItem
-    SET total_amount = total_amount + ?
-    WHERE id = ?
-    ''', (request[1], request[0]))
-    
-    cursor.execute('''
     UPDATE Project
-    SET total_expenditure = total_expenditure + ?
-    WHERE id = (SELECT project_id FROM ProjectItem WHERE id = ?)
-    ''', (request[1], request[0]))
+    SET total_expenditure = total_expenditure + ?,
+        expected_profit = expected_profit - ?,
+        balance = balance - ?
+    WHERE id = ?
+    ''', (request[1], request[1], request[1], request[0]))
     
     conn.commit()
     conn.close()

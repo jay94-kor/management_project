@@ -31,8 +31,10 @@ CREATE TABLE ProjectItem (
 
 CREATE TABLE ExpenditureRequest (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    project_item_id INTEGER NOT NULL,
-    requested_amount REAL NOT NULL,
+    project_id INTEGER NOT NULL,
+    amount REAL NOT NULL,
+    expenditure_type TEXT NOT NULL,
+    reason TEXT,
     status TEXT DEFAULT 'Pending',
-    FOREIGN KEY (project_item_id) REFERENCES ProjectItem(id)
+    FOREIGN KEY (project_id) REFERENCES Project(id)
 );
