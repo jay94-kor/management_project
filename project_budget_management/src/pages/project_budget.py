@@ -1,5 +1,5 @@
 import streamlit as st
-from src.components.db import get_db_connection, get_projects, get_budget_items
+from ..components.db import get_db_connection, get_projects, get_budget_items
 from datetime import datetime
 
 def show():

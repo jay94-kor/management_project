@@ -1,6 +1,6 @@
 import streamlit as st
-from project_budget_management.src.components.db import get_db_connection
-from project_budget_management.src.components.common import select_project
+from ..components.db import get_db_connection
+from ..components.common import select_project
 
 # 나머지 코드는 그대로 유지
 

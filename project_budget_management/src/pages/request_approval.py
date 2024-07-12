@@ -1,5 +1,5 @@
 import streamlit as st
-from project_budget_management.src.components.db import get_db_connection, get_logs
+from ..components.db import get_db_connection, get_logs
 from datetime import datetime
 
 def show():
