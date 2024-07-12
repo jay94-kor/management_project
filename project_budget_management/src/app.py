@@ -1,6 +1,6 @@
 import streamlit as st
-from project_budget_management.src.pages import home, project_input, project_list, project_budget, dashboard, request_approval, user_management, budget_adjustment, project_budget_adjustment, assign_manager, margin_maintenance
-from project_budget_management.src.components.auth import login, logout
+from src.pages import home, project_input, project_list, project_budget, dashboard, request_approval, user_management, budget_adjustment, project_budget_adjustment, assign_manager, margin_maintenance
+from src.components.auth import login, logout
 
 st.set_page_config(
     page_title="프로젝트 예산 관리 시스템",
