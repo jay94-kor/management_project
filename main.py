@@ -9,9 +9,9 @@ def display_project_cards():
     cols = st.columns(3)
     for idx, project in enumerate(projects):
         with cols[idx % 3]:
-            with st.expander(project[1], expanded=False):
+            with st.expander(project[1], expanded=True):
                 st.write(f"계약금액: {project[5]:,.0f}원")
-                st.write(f"수익률: {project[7]:.2f}%" if project[7] is not None else "수익률: N/A")
+                st.write(f"수익률: {project[7]*100:.2f}%" if project[7] is not None else "수익률: N/A")
                 st.write(f"담당자: {project[3]}")
                 if st.button("상세 보기", key=f"view_{project[0]}"):
                     st.session_state.selected_project = project[0]
