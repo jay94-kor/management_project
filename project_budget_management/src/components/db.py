@@ -1,4 +1,13 @@
 import sqlite3
+from contextlib import contextmanager
+
+@contextmanager
+def db_connection():
+    conn = get_db_connection()
+    try:
+        yield conn
+    finally:
+        conn.close()
 
 def get_db_connection():
     conn = sqlite3.connect('budget_management.db')

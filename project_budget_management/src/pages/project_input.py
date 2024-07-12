@@ -1,5 +1,5 @@
 import streamlit as st
-from src.components.db import get_db_connection
+from src.components.db import db_connection
 
 def show():
     st.title("프로젝트 입력")
@@ -34,21 +34,19 @@ def show():
             elif allocated_budget > proposed_price:
                 st.warning('배정금액이 제안가보다 큽니다. 확인해주세요.')
             else:
-                try:
-                    conn = get_db_connection()
-                    c = conn.cursor()
-                    c.execute('''
-                        INSERT INTO projects (name, client, created_by, created_at, event_location, final_edit_date, start_date, end_date)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    ''', (name, client, created_by, created_at, event_location, final_edit_date, start_date, end_date))
-                    project_id = c.lastrowid
-                    c.execute('''
-                        INSERT INTO budget_items (project_id, category, sub_category, item, description, quantity, unit, days, times, unit_price, allocated_budget, proposed_price)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ''', (project_id, category, sub_category, item, description, quantity, unit, days, times, unit_price, allocated_budget, proposed_price))
-                    conn.commit()
-                    st.success('프로젝트와 예산 항목이 추가되었습니다!')
-                except Exception as e:
-                    st.error(f'오류가 발생했습니다: {str(e)}')
-                finally:
-                    conn.close()
+                with db_connection() as conn:
+                    try:
+                        c = conn.cursor()
+                        c.execute('''
+                            INSERT INTO projects (name, client, created_by, created_at, event_location, final_edit_date, start_date, end_date)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        ''', (name, client, created_by, created_at, event_location, final_edit_date, start_date, end_date))
+                        project_id = c.lastrowid
+                        c.execute('''
+                            INSERT INTO budget_items (project_id, category, sub_category, item, description, quantity, unit, days, times, unit_price, allocated_budget, proposed_price)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ''', (project_id, category, sub_category, item, description, quantity, unit, days, times, unit_price, allocated_budget, proposed_price))
+                        conn.commit()
+                        st.success('프로젝트와 예산 항목이 추가되었습니다!')
+                    except Exception as e:
+                        st.error(f'오류가 발생했습니다: {str(e)}')
