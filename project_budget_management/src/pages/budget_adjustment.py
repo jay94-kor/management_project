@@ -1,6 +1,6 @@
 import streamlit as st
-from ..components.db import db_connection
-from ..components.common import select_project
+from project_budget_management.src.components.db import db_connection
+from project_budget_management.src.components.common import select_project
 
 def show():
     st.title("항목별 예산 이동")

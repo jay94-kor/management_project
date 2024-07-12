@@ -1,5 +1,5 @@
 import streamlit as st
-from ..components.db import get_db_connection
+from project_budget_management.src.components.db import get_db_connection
 
 def select_project(label="프로젝트 선택"):
     conn = get_db_connection()

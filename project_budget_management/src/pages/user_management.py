@@ -1,6 +1,6 @@
 import streamlit as st
-from ..components.db import get_db_connection, get_users
-from ..components.auth import hash_password
+from project_budget_management.src.components.db import get_db_connection, get_users
+from project_budget_management.src.components.auth import hash_password
 
 def show():
     st.title("회원 관리")
