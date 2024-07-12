@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from src.components.db import get_db_connection, get_projects
+from project_budget_management.src.components.db import get_db_connection, get_projects
 
 def show():
     st.title("대시보드")

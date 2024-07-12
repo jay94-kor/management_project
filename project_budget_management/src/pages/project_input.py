@@ -1,5 +1,5 @@
 import streamlit as st
-from src.components.db import db_connection
+from project_budget_management.src.components.db import db_connection
 
 def show():
     st.title("프로젝트 입력")

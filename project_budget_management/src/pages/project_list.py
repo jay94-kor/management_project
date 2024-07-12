@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from src.components.db import get_projects
+from project_budget_management.src.components.db import get_projects
 
 def show():
     st.title("프로젝트 목록")

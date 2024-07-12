@@ -1,6 +1,6 @@
 import streamlit as st
-from src.components.db import db_connection
-from src.components.common import select_project
+from project_budget_management.src.components.db import db_connection
+from project_budget_management.src.components.common import select_project
 
 def show():
     st.title("프로젝트 간 예산 이동")
@@ -27,4 +27,4 @@ def show():
                 # 이동 받을 프로젝트의 예산 항목 조정
                 c.execute('UPDATE budget_items SET allocated_budget = allocated_budget + ? WHERE project_id = ?', (transfer_amount, to_project_id))
                 conn.commit()
-                st.success('프로젝트 간 예산이 이동되었습니다.')
+                st.success('프로젝트 간 예산 이동되었습니다.')
