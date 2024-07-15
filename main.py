@@ -1,8 +1,9 @@
 import streamlit as st
 import pandas as pd
 from utils.db_utils import setup_database
-from services.project_service import get_projects, get_project_items, add_expenditure_request, update_project_budget, get_expenditure_requests, get_project_by_id, get_project_expenditures
+from services.project_service import get_projects, get_project_items, add_expenditure_request, update_project_budget, get_expenditure_requests, get_project_by_id, get_project_expenditures, cancel_expenditure_request
 from services.expenditure_service import approve_expenditure, reject_expenditure
+import time
 
 def sidebar_menu():
     st.sidebar.title("메뉴")
@@ -50,7 +51,7 @@ def display_project_details(project_code):
     st.subheader(f"프로젝트 코드: {project[1]} - 프로젝트: {project[2]}")
     
     col1, col2, col3 = st.columns(3)
-    col1.metric("���약금액", format_currency(int(project[6])))
+    col1.metric("계약금액", format_currency(int(project[6])))
     col2.metric("예상 수익", format_currency(int(project[7])))
     col3.metric("수익률", f"{project[8]*100:.0f}%" if project[8] is not None else "N/A")
 
@@ -61,7 +62,7 @@ def display_project_details(project_code):
     st.subheader("프로젝트 항목")
     items = get_project_items(project_code)
     if items:
-        df = pd.DataFrame(items, columns=["ID", "프로젝트ID", "프로젝트 코드", "카테고리", "항목명", "설명", "수량1", "규격1", "수량2", "규격2", "단가", "총액", "배정금액"])
+        df = pd.DataFrame(items, columns=["ID", "프로젝트ID", "프로젝트 코드", "카테고리", "항목명", "설명", "수량1", "규격1", "수량2", "규격2", "단가", "총액", "배정금액", "총 지출액"])
         st.dataframe(df)
     else:
         st.info("해당 프로젝트에 등록된 항목이 없습니다.")
@@ -92,7 +93,16 @@ def expenditure_request_form(project_code):
         
         st.write(f"잔여 예산: {format_currency(remaining_budget)}")
         
-        amount = st.number_input("지출액", min_value=0, max_value=int(remaining_budget), step=1, format="%d")
+        amount_str = st.text_input("지출액", value="0")
+        amount_str = amount_str.replace(',', '')  # 콤마 제거
+        try:
+            amount = int(amount_str)
+        except ValueError:
+            st.error("올바른 금액을 입력해주세요.")
+            return
+        
+        st.write(f"입력한 금액: {format_currency(amount)}")
+        
         expenditure_type = st.text_input("지출처")  # 협력사 이름 입력
         reason = st.text_area("지출 사유")
         date = st.date_input("지출 예정일")
@@ -100,6 +110,10 @@ def expenditure_request_form(project_code):
         submitted = st.form_submit_button("상신")
         
         if submitted:
+            if amount > remaining_budget:
+                st.error("잔여 예산을 초과하는 금액입니다.")
+                return
+            
             if attachment:
                 file_contents = attachment.read()
                 file_name = attachment.name
@@ -109,7 +123,26 @@ def expenditure_request_form(project_code):
             selected_item_id = selected_item_data[0]
             add_expenditure_request(selected_item_id, amount, expenditure_type, reason, date, file_name, file_contents)
             st.success("지출 요청이 상신되었습니다.")
+            st.balloons()  # 추가: 상신 완료 시 풍선 효과
+            time.sleep(2)  # 2초 대기
             st.experimental_rerun()
+
+    st.subheader("상신된 지출 요청")
+    expenditures = get_project_expenditures(project_code)
+    pending_expenditures = [exp for exp in expenditures if exp[9] == 'Pending']
+    
+    if pending_expenditures:
+        for exp in pending_expenditures:
+            with st.expander(f"요청 ID: {exp[0]} - 금액: {format_currency(exp[3])}"):
+                st.write(f"지출처: {exp[4]}")
+                st.write(f"사유: {exp[5]}")
+                st.write(f"지출 예정일: {exp[6]}")
+                if st.button("취소", key=f"cancel_{exp[0]}"):
+                    cancel_expenditure_request(exp[0])
+                    st.success("지출 요청이 취소되었습니다.")
+                    st.experimental_rerun()
+    else:
+        st.info("상신된 지출 요청이 없습니다.")
 
 def approve_expenditure_requests():
     st.header("지출 승인")

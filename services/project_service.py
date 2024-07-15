@@ -34,9 +34,11 @@ def get_project_items(project_code):
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute('''
-    SELECT pi.*, COALESCE(SUM(er.amount), 0) as total_expenditure
+    SELECT pi.id, pi.project_id, pi.project_code, pi.category, pi.item, pi.description, 
+           pi.quantity1, pi.spec1, pi.quantity2, pi.spec2, pi.unit_price, pi.total_price, 
+           pi.assigned_amount, COALESCE(SUM(er.amount), 0) as total_expenditure
     FROM ProjectItem pi
-    LEFT JOIN ExpenditureRequest er ON pi.project_id = er.project_id AND er.status = 'Approved'
+    LEFT JOIN ExpenditureRequest er ON pi.project_id = er.project_id
     WHERE pi.project_code = ?
     GROUP BY pi.id
     ''', (project_code,))
@@ -86,13 +88,24 @@ def get_expenditure_requests():
     conn.close()
     return requests
 
-def add_expenditure_request(project_id, amount, expenditure_type, reason, date, file_name, file_contents):
+def add_expenditure_request(project_item_id, amount, expenditure_type, reason, date, file_name, file_contents):
     conn = get_connection()
     cursor = conn.cursor()
+    
+    cursor.execute('SELECT project_id, project_code FROM ProjectItem WHERE id = ?', (project_item_id,))
+    project_id, project_code = cursor.fetchone()
+    
     cursor.execute('''
-    INSERT INTO ExpenditureRequest (project_id, amount, expenditure_type, reason, planned_date, file_name, file_contents)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-    ''', (project_id, amount, expenditure_type, reason, date, file_name, file_contents))
+    INSERT INTO ExpenditureRequest (project_id, project_code, project_item_id, amount, expenditure_type, reason, planned_date, file_name, file_contents, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending')
+    ''', (project_id, project_code, project_item_id, amount, expenditure_type, reason, date, file_name, file_contents))
+    
+    cursor.execute('''
+    UPDATE ProjectItem
+    SET assigned_amount = assigned_amount - ?
+    WHERE id = ?
+    ''', (amount, project_item_id))
+    
     conn.commit()
     conn.close()
 
@@ -111,3 +124,22 @@ def get_project_expenditures(project_code):
     expenditures = cursor.fetchall()
     conn.close()
     return expenditures
+
+def cancel_expenditure_request(request_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+    SELECT project_id, amount FROM ExpenditureRequest
+    WHERE id = ?
+    ''', (request_id,))
+    request = cursor.fetchone()
+    
+    if request:
+        cursor.execute('''
+        DELETE FROM ExpenditureRequest
+        WHERE id = ?
+        ''', (request_id,))
+    
+    conn.commit()
+    conn.close()
