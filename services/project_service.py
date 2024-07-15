@@ -15,7 +15,7 @@ def add_project(name, client, pm, department, contract_amount, expected_profit):
 def get_projects():
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute('SELECT id, name, client, pm, department, contract_amount, expected_profit, expected_profit_rate FROM Project')
+    cursor.execute('SELECT id, project_code, name, client, pm, department, CAST(contract_amount AS INTEGER), CAST(expected_profit AS INTEGER), expected_profit_rate FROM Project')    
     projects = cursor.fetchall()
     conn.close()
     return projects
@@ -30,10 +30,16 @@ def add_project_item(project_id, category, item, description, quantity1, spec1, 
     conn.commit()
     conn.close()
 
-def get_project_items(project_id):
+def get_project_items(project_code):
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute('SELECT * FROM ProjectItem WHERE project_id = ?', (project_id,))
+    cursor.execute('''
+    SELECT pi.*, COALESCE(SUM(er.amount), 0) as total_expenditure
+    FROM ProjectItem pi
+    LEFT JOIN ExpenditureRequest er ON pi.project_id = er.project_id AND er.status = 'Approved'
+    WHERE pi.project_code = ?
+    GROUP BY pi.id
+    ''', (project_code,))
     project_items = cursor.fetchall()
     conn.close()
     return project_items
@@ -67,21 +73,11 @@ def update_project_budget(project_id):
     conn.commit()
     conn.close()
 
-def add_expenditure_request(project_id, amount, expenditure_type, reason):
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute('''
-    INSERT INTO ExpenditureRequest (project_id, amount, expenditure_type, reason, status)
-    VALUES (?, ?, ?, ?, 'Pending')
-    ''', (project_id, amount, expenditure_type, reason))
-    conn.commit()
-    conn.close()
-
 def get_expenditure_requests():
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute('''
-    SELECT er.id, p.name, er.amount, er.expenditure_type, er.reason
+    SELECT er.id, p.name, er.amount, er.expenditure_type, er.reason, er.planned_date, er.file_name, er.file_contents
     FROM ExpenditureRequest er
     JOIN Project p ON er.project_id = p.id
     WHERE er.status = 'Pending'
@@ -89,3 +85,29 @@ def get_expenditure_requests():
     requests = cursor.fetchall()
     conn.close()
     return requests
+
+def add_expenditure_request(project_id, amount, expenditure_type, reason, date, file_name, file_contents):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+    INSERT INTO ExpenditureRequest (project_id, amount, expenditure_type, reason, planned_date, file_name, file_contents)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+    ''', (project_id, amount, expenditure_type, reason, date, file_name, file_contents))
+    conn.commit()
+    conn.close()
+
+def get_project_by_id(project_code):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM Project WHERE project_code = ?', (project_code,))
+    project = cursor.fetchone()
+    conn.close()
+    return project
+
+def get_project_expenditures(project_code):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM ExpenditureRequest WHERE project_code = ?', (project_code,))
+    expenditures = cursor.fetchall()
+    conn.close()
+    return expenditures

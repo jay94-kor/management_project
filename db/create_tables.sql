@@ -2,6 +2,7 @@
 
 CREATE TABLE Project (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_code TEXT NOT NULL UNIQUE,
     name TEXT NOT NULL,
     client TEXT NOT NULL,
     pm TEXT NOT NULL,
@@ -16,6 +17,7 @@ CREATE TABLE Project (
 CREATE TABLE ProjectItem (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     project_id INTEGER NOT NULL,
+    project_code TEXT NOT NULL,
     category TEXT NOT NULL,
     item TEXT NOT NULL,
     description TEXT,
@@ -26,15 +28,22 @@ CREATE TABLE ProjectItem (
     unit_price REAL,
     total_price REAL,
     assigned_amount REAL,
-    FOREIGN KEY (project_id) REFERENCES Project(id)
+    FOREIGN KEY (project_id) REFERENCES Project(id),
+    FOREIGN KEY (project_code) REFERENCES Project(project_code)
 );
 
 CREATE TABLE ExpenditureRequest (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     project_id INTEGER NOT NULL,
+    project_code TEXT NOT NULL,
     amount REAL NOT NULL,
     expenditure_type TEXT NOT NULL,
     reason TEXT,
+    planned_date DATE,
+    file_name TEXT,
+    file_contents BLOB,
     status TEXT DEFAULT 'Pending',
-    FOREIGN KEY (project_id) REFERENCES Project(id)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (project_id) REFERENCES Project(id),
+    FOREIGN KEY (project_code) REFERENCES Project(project_code)
 );

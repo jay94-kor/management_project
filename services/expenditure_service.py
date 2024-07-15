@@ -30,10 +30,20 @@ def approve_expenditure(request_id):
     cursor.execute('''
     UPDATE Project
     SET total_expenditure = total_expenditure + ?,
-        expected_profit = expected_profit - ?,
-        balance = balance - ?
+        expected_profit = expected_profit - ?
     WHERE id = ?
-    ''', (request[1], request[1], request[1], request[0]))
+    ''', (request[1], request[1], request[0]))
     
+    conn.commit()
+    conn.close()
+
+def reject_expenditure(request_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+    UPDATE ExpenditureRequest
+    SET status = 'Rejected'
+    WHERE id = ?
+    ''', (request_id,))
     conn.commit()
     conn.close()
