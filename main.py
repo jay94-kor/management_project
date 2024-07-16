@@ -10,6 +10,7 @@ from services.project_service import (
 )
 from services.expenditure_service import approve_expenditure, reject_expenditure
 import time
+from db.database import get_connection
 
 # 상수 정의
 MENU_DASHBOARD = "대시보드"
@@ -22,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 def sidebar_menu() -> str:
     st.sidebar.title("메뉴")
-    return st.sidebar.radio("", [MENU_DASHBOARD, MENU_PROJECT_LIST, MENU_EXPENDITURE_APPROVAL])
+    return st.sidebar.radio("메뉴 선택", [MENU_DASHBOARD, MENU_PROJECT_LIST, MENU_EXPENDITURE_APPROVAL], label_visibility="collapsed")
 
 def display_dashboard():
     st.header("대시보드")
@@ -93,13 +94,67 @@ def display_project_details(project_code: str):
         st.subheader("지출 내역")
         expenditures = get_project_expenditures(project_code)
         if expenditures:
-            exp_df = pd.DataFrame(expenditures, columns=["ID", "프로젝트ID", "프로젝트 코드", "금액", "지출처", "사유", "지출 예정일", "파일명", "파일 내용", "상태", "생성일"])
+            exp_df = pd.DataFrame(expenditures, columns=["ID", "프로젝트ID", "프로젝트 코드", "금액", "지출처", "설명", "지출 예정일", "파일명", "파일 내용", "상태", "생성일"])
             st.dataframe(exp_df)
         else:
             st.info("해당 프로젝트의 지출 내역이 없습니다.")
     except Exception as e:
         logger.error(f"프로젝트 상세 정보 표시 중 오류 발생: {str(e)}")
         st.error("프로젝트 상세 정보를 불러오는 중 오류가 발생했습니다.")
+
+def get_available_budget_items(project_code: str, current_item_id: int):
+    items = get_project_items(project_code)
+    return [item for item in items if item[0] != current_item_id and (item[12] - item[13]) > 0]
+
+def transfer_budget(from_item_id: int, to_item_id: int, amount: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("BEGIN TRANSACTION")
+        
+        # 출발 항목에서 예산 차감
+        cursor.execute("""
+            UPDATE ProjectItem
+            SET assigned_amount = assigned_amount - ?
+            WHERE id = ?
+        """, (amount, from_item_id))
+        
+        # 도착 항목에 예산 추가
+        cursor.execute("""
+            UPDATE ProjectItem
+            SET assigned_amount = assigned_amount + ?
+            WHERE id = ?
+        """, (amount, to_item_id))
+        
+        # 예산 이전 기록 추가
+        cursor.execute("""
+            INSERT INTO BudgetTransferLog (from_item_id, to_item_id, amount, transfer_date)
+            VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+        """, (from_item_id, to_item_id, amount))
+        
+        cursor.execute("COMMIT")
+        return True
+    except Exception as e:
+        cursor.execute("ROLLBACK")
+        logger.error(f"예산 이전 중 오류 발생: {str(e)}")
+        logger.error(f"SQL 상태: {e.args[0]}")
+        return False
+    finally:
+        conn.close()
+
+def log_budget_transfer(from_item_id: int, to_item_id: int, amount: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            INSERT INTO BudgetTransferLog (from_item_id, to_item_id, amount, transfer_date)
+            VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+        """, (from_item_id, to_item_id, amount))
+        conn.commit()
+    except Exception as e:
+        logger.error(f"예산 이전 로그 기록 중 오류 발생: {str(e)}")
+    finally:
+        conn.close()
 
 def expenditure_request_form(project_code: str):
     st.subheader("지출 요청")
@@ -112,67 +167,106 @@ def expenditure_request_form(project_code: str):
         
         item_options = [f"{item[4]} (잔액: {format_currency(item[12] - item[13])})" for item in project_items]
         
-        with st.form("expenditure_request"):
-            selected_item = st.selectbox("항목 선택", item_options)
-            selected_item_index = item_options.index(selected_item)
-            selected_item_data = project_items[selected_item_index]
-            remaining_budget = selected_item_data[12] - selected_item_data[13]
+        selected_item = st.selectbox("항목 선택", item_options)
+        selected_item_index = item_options.index(selected_item)
+        selected_item_data = project_items[selected_item_index]
+        remaining_budget = selected_item_data[12] - selected_item_data[13]
+        
+        st.write(f"잔여 예산: {format_currency(remaining_budget)}")
+        
+        amount_str = st.text_input("지출액", value="0")
+        expenditure_type = st.text_input("지출처", max_chars=100)
+        description = st.text_area("설명", max_chars=500)
+        date = st.date_input("지출 예정일")
+        attachment = st.file_uploader("첨부 파일", type=["pdf", "jpg", "png"])
+        
+        amount_str = amount_str.replace(',', '')  # 콤마 제거
+        try:
+            amount = int(amount_str)
+            if amount <= 0:
+                st.error("지출액은 0보다 커야 합니다.")
+            elif amount > remaining_budget:
+                st.warning("요청한 금액이 잔여 예산을 초과합니다.")
+                available_items = get_available_budget_items(project_code, selected_item_data[0])
+                if available_items:
+                    st.write("다른 항목에서 예산을 가져올 수 있습니다:")
+                    transfer_options = []
+                    for item in available_items:
+                        available_amount = item[12] - item[13]
+                        if available_amount >= (amount - remaining_budget):
+                            transfer_options.append(f"{item[4]}에서 {format_currency(amount - remaining_budget)} 가져오기")
+                    
+                    if transfer_options:
+                        selected_transfer = st.selectbox("예산 이전 선택", ["선택하세요"] + transfer_options)
+                        if selected_transfer != "선택하세요":
+                            st.write(f"선택된 예산 이전: {selected_transfer}")
+                    else:
+                        st.error("충분한 예산을 가진 다른 항목이 없습니다.")
+                else:
+                    st.error("사용 가능한 예산이 있는 다른 항목이 없습니다.")
             
-            st.write(f"잔여 예산: {format_currency(remaining_budget)}")
-            
-            amount_str = st.text_input("지출액", value="0")
-            expenditure_type = st.text_input("지출처", max_chars=100)
-            reason = st.text_area("지출 사유", max_chars=500)
-            date = st.date_input("지출 예정일")
-            attachment = st.file_uploader("첨부 파일", type=["pdf", "jpg", "png"])
-            
-            submitted = st.form_submit_button("상신")
-            
-            if submitted:
-                amount_str = amount_str.replace(',', '')  # 콤마 제거
-                try:
-                    amount = int(amount_str)
+            with st.form("expenditure_request"):
+                submitted = st.form_submit_button("상신")
+                if submitted:
                     if amount <= 0:
                         st.error("지출액은 0보다 커야 합니다.")
                     elif amount > remaining_budget:
-                        st.error("잔여 예산을 초과하는 금액입니다.")
-                    else:
-                        if attachment:
-                            file_contents = attachment.read()
-                            file_name = attachment.name
+                        if 'selected_transfer' in locals() and selected_transfer != "선택하세요":
+                            from_item_index = available_items[transfer_options.index(selected_transfer)][0]
+                            if transfer_budget(from_item_index, selected_item_data[0], amount - remaining_budget):
+                                st.success("예산이 성공적으로 이전되었습니다.")
+                                log_budget_transfer(from_item_index, selected_item_data[0], amount - remaining_budget)
+                                process_expenditure_request(selected_item_data[0], amount, expenditure_type, description, date, attachment)
+                                st.success("지출 요청이 상신되었습니다.")
+                                st.balloons()
+                                time.sleep(2)
+                                st.experimental_rerun()
+                            else:
+                                st.error("예산 이전 중 오류가 발생했습니다.")
                         else:
-                            file_contents = None
-                            file_name = None
-                        selected_item_id = selected_item_data[0]
-                        add_expenditure_request(selected_item_id, amount, expenditure_type, reason, date, file_name, file_contents)
+                            st.error("예산 이전을 선택해주세요.")
+                    else:
+                        process_expenditure_request(selected_item_data[0], amount, expenditure_type, description, date, attachment)
                         st.success("지출 요청이 상신되었습니다.")
                         st.balloons()
                         time.sleep(2)
                         st.experimental_rerun()
-                except ValueError:
-                    st.error("올바른 금액을 입력해주세요.")
+        except ValueError:
+            st.error("올바른 금액을 입력해주세요.")
 
-        st.write(f"입력한 금액: {format_currency(int(amount_str.replace(',', '')) if amount_str.replace(',', '').isdigit() else 0)}")
+        st.write(f"입력한 금액: {format_currency(int(amount_str) if amount_str.isdigit() else 0)}")
         
-        st.subheader("상신된 지출 요청")
-        expenditures = get_project_expenditures(project_code)
-        pending_expenditures = [exp for exp in expenditures if exp[9] == 'Pending']
-        
-        if pending_expenditures:
-            for exp in pending_expenditures:
-                with st.expander(f"요청 ID: {exp[0]} - 금액: {format_currency(exp[3])}"):
-                    st.write(f"지출처: {exp[4]}")
-                    st.write(f"사유: {exp[5]}")
-                    st.write(f"지출 예정일: {exp[6]}")
-                    if st.button("취소", key=f"cancel_{exp[0]}"):
-                        cancel_expenditure_request(exp[0])
-                        st.success("지출 요청이 취소되었습니다.")
-                        st.experimental_rerun()
-        else:
-            st.info("상신된 지출 요청이 없습니다.")
+        display_pending_expenditures(project_code)
     except Exception as e:
         logger.error(f"지출 요청 폼 처리 중 오류 발생: {str(e)}")
         st.error("지출 요청을 처리하는 중 오류가 발생했습니다.")
+
+def process_expenditure_request(item_id, amount, expenditure_type, description, date, attachment):
+    if attachment:
+        file_contents = attachment.read()
+        file_name = attachment.name
+    else:
+        file_contents = None
+        file_name = None
+    add_expenditure_request(item_id, amount, expenditure_type, description, date, file_name, file_contents)
+
+def display_pending_expenditures(project_code):
+    st.subheader("상신된 지출 요청")
+    expenditures = get_project_expenditures(project_code)
+    pending_expenditures = [exp for exp in expenditures if exp[9] == 'Pending']
+    
+    if pending_expenditures:
+        for exp in pending_expenditures:
+            with st.expander(f"요청 ID: {exp[0]} - 금액: {format_currency(exp[3])}"):
+                st.write(f"지출처: {exp[4]}")
+                st.write(f"설명: {exp[5]}")
+                st.write(f"지출 예정일: {exp[6]}")
+                if st.button("취소", key=f"cancel_{exp[0]}"):
+                    cancel_expenditure_request(exp[0])
+                    st.success("지출 요청이 취소되었습니다.")
+                    st.experimental_rerun()
+    else:
+        st.info("상신된 지출 요청이 없습니다.")
 
 def approve_expenditure_requests():
     st.header("지출 승인")
@@ -182,7 +276,7 @@ def approve_expenditure_requests():
             with st.expander(f"요청 ID: {request[0]} - 금액: {request[2]:,.0f}원"):
                 st.write(f"프로젝트: {request[1]}")
                 st.write(f"지출처: {request[3]}")
-                st.write(f"사유: {request[4]}")
+                st.write(f"설명: {request[4]}")
                 st.write(f"지출 예정일: {request[5]}")
                 if request[6]:  # 첨부 파일이 있는 경우
                     st.download_button("첨부 파일 다운로드", request[7], file_name=request[6])

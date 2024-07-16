@@ -79,7 +79,7 @@ def get_expenditure_requests():
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute('''
-    SELECT er.id, p.name, er.amount, er.expenditure_type, er.reason, er.planned_date, er.file_name, er.file_contents
+    SELECT er.id, p.name, er.amount, er.expenditure_type, er.description, er.planned_date, er.file_name, er.file_contents
     FROM ExpenditureRequest er
     JOIN Project p ON er.project_id = p.id
     WHERE er.status = 'Pending'
@@ -88,7 +88,7 @@ def get_expenditure_requests():
     conn.close()
     return requests
 
-def add_expenditure_request(project_item_id, amount, expenditure_type, reason, date, file_name, file_contents):
+def add_expenditure_request(project_item_id, amount, expenditure_type, description, date, file_name, file_contents):
     conn = get_connection()
     cursor = conn.cursor()
     
@@ -96,9 +96,9 @@ def add_expenditure_request(project_item_id, amount, expenditure_type, reason, d
     project_id, project_code = cursor.fetchone()
     
     cursor.execute('''
-    INSERT INTO ExpenditureRequest (project_id, project_code, project_item_id, amount, expenditure_type, reason, planned_date, file_name, file_contents, status)
+    INSERT INTO ExpenditureRequest (project_id, project_code, project_item_id, amount, expenditure_type, description, planned_date, file_name, file_contents, status)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending')
-    ''', (project_id, project_code, project_item_id, amount, expenditure_type, reason, date, file_name, file_contents))
+    ''', (project_id, project_code, project_item_id, amount, expenditure_type, description, date, file_name, file_contents))
     
     cursor.execute('''
     UPDATE ProjectItem

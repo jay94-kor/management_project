@@ -47,3 +47,13 @@ CREATE TABLE ExpenditureRequest (
     FOREIGN KEY (project_id) REFERENCES Project(id),
     FOREIGN KEY (project_code) REFERENCES Project(project_code)
 );
+
+CREATE TABLE BudgetTransferLog (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    from_item_id INTEGER NOT NULL,
+    to_item_id INTEGER NOT NULL,
+    amount REAL NOT NULL,
+    transfer_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (from_item_id) REFERENCES ProjectItem(id),
+    FOREIGN KEY (to_item_id) REFERENCES ProjectItem(id)
+);
