@@ -8,14 +8,12 @@ from services.project_service import (
     update_project_budget, get_expenditure_requests, get_project_by_id,
     get_project_expenditures, cancel_expenditure_request
 )
-from services.expenditure_service import approve_expenditure, reject_expenditure
 import time
 from db.database import get_connection
 
 # 상수 정의
 MENU_DASHBOARD = "대시보드"
 MENU_PROJECT_LIST = "프로젝트 목록"
-MENU_EXPENDITURE_APPROVAL = "지출 승인"
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -23,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 def sidebar_menu() -> str:
     st.sidebar.title("메뉴")
-    return st.sidebar.radio("메뉴 선택", [MENU_DASHBOARD, MENU_PROJECT_LIST, MENU_EXPENDITURE_APPROVAL], label_visibility="collapsed")
+    return st.sidebar.radio("메뉴 선택", [MENU_DASHBOARD, MENU_PROJECT_LIST], label_visibility="collapsed")
 
 def display_dashboard():
     st.header("대시보드")
@@ -137,7 +135,6 @@ def transfer_budget(from_item_id: int, to_item_id: int, amount: int):
     except Exception as e:
         cursor.execute("ROLLBACK")
         logger.error(f"예산 이전 중 오류 발생: {str(e)}")
-        logger.error(f"SQL 상태: {e.args[0]}")
         return False
     finally:
         conn.close()
@@ -268,33 +265,6 @@ def display_pending_expenditures(project_code):
     else:
         st.info("상신된 지출 요청이 없습니다.")
 
-def approve_expenditure_requests():
-    st.header("지출 승인")
-    try:
-        expenditure_requests = get_expenditure_requests()
-        for request in expenditure_requests:
-            with st.expander(f"요청 ID: {request[0]} - 금액: {request[2]:,.0f}원"):
-                st.write(f"프로젝트: {request[1]}")
-                st.write(f"지출처: {request[3]}")
-                st.write(f"설명: {request[4]}")
-                st.write(f"지출 예정일: {request[5]}")
-                if request[6]:  # 첨부 파일이 있는 경우
-                    st.download_button("첨부 파일 다운로드", request[7], file_name=request[6])
-                col1, col2 = st.columns(2)
-                with col1:
-                    if st.button("승인", key=f"approve_{request[0]}"):
-                        approve_expenditure(request[0])
-                        st.success("지출이 승인되었습니다.")
-                        st.experimental_rerun()
-                with col2:
-                    if st.button("반려", key=f"reject_{request[0]}"):
-                        reject_expenditure(request[0])
-                        st.success("지출이 반려되었습니다.")
-                        st.experimental_rerun()
-    except Exception as e:
-        logger.error(f"지출 승인 처리 중 오류 발생: {str(e)}")
-        st.error("지출 승인 요청을 처리하는 중 오류가 발생했습니다.")
-
 def main():
     st.set_page_config(layout="wide", page_title="프로젝트 관리 시스템")
     
@@ -311,8 +281,6 @@ def main():
             st.header(f"프로젝트 상세 정보 (ID: {st.session_state.selected_project})")
             display_project_details(st.session_state.selected_project)
             expenditure_request_form(st.session_state.selected_project)
-    elif menu == MENU_EXPENDITURE_APPROVAL:
-        approve_expenditure_requests()
 
 def format_currency(amount: int) -> str:
     amount = int(amount)  # 소수점 제거

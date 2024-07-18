@@ -58,7 +58,7 @@ def update_project_budget(project_id):
     
     # 프로젝트의 총 지출액 계산
     cursor.execute('''
-    SELECT SUM(amount) FROM ExpenditureRequest WHERE project_id = ? AND status = 'Approved'
+    SELECT SUM(amount) FROM ExpenditureRequest WHERE project_id = ?
     ''', (project_id,))
     total_expenditure = cursor.fetchone()[0] or 0
     
@@ -79,10 +79,9 @@ def get_expenditure_requests():
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute('''
-    SELECT er.id, p.name, er.amount, er.expenditure_type, er.description, er.planned_date, er.file_name, er.file_contents
+    SELECT er.id, p.name, er.amount, er.expenditure_type, er.reason, er.planned_date, er.file_name, er.file_contents
     FROM ExpenditureRequest er
     JOIN Project p ON er.project_id = p.id
-    WHERE er.status = 'Pending'
     ''')
     requests = cursor.fetchall()
     conn.close()
@@ -96,8 +95,8 @@ def add_expenditure_request(project_item_id, amount, expenditure_type, descripti
     project_id, project_code = cursor.fetchone()
     
     cursor.execute('''
-    INSERT INTO ExpenditureRequest (project_id, project_code, project_item_id, amount, expenditure_type, description, planned_date, file_name, file_contents, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending')
+    INSERT INTO ExpenditureRequest (project_id, project_code, project_item_id, amount, expenditure_type, reason, planned_date, file_name, file_contents)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     ''', (project_id, project_code, project_item_id, amount, expenditure_type, description, date, file_name, file_contents))
     
     cursor.execute('''

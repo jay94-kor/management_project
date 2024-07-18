@@ -6,6 +6,7 @@ def create_database(db_path, schema_path):
     
     # 기존 테이블 삭제
     cursor.executescript('''
+    DROP TABLE IF EXISTS BudgetTransferLog;
     DROP TABLE IF EXISTS ExpenditureRequest;
     DROP TABLE IF EXISTS ProjectItem;
     DROP TABLE IF EXISTS Project;

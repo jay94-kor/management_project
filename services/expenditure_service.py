@@ -12,53 +12,23 @@ def request_expenditure(project_item_id, requested_amount):
     conn.commit()
     conn.close()
 
-def approve_expenditure(request_id):
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute('''
-    UPDATE ExpenditureRequest
-    SET status = 'Approved'
-    WHERE id = ?
-    ''', (request_id,))
-    
-    cursor.execute('''
-    SELECT project_id, amount FROM ExpenditureRequest
-    WHERE id = ?
-    ''', (request_id,))
-    request = cursor.fetchone()
-    
-    cursor.execute('''
-    UPDATE Project
-    SET total_expenditure = total_expenditure + ?,
-        expected_profit = expected_profit - ?
-    WHERE id = ?
-    ''', (request[1], request[1], request[0]))
-    
-    conn.commit()
-    conn.close()
-
-def reject_expenditure(request_id):
+def add_expenditure_request(project_item_id, amount, expenditure_type, description, date, file_name, file_contents):
     conn = get_connection()
     cursor = conn.cursor()
     
-    cursor.execute('''
-    SELECT project_id, amount FROM ExpenditureRequest
-    WHERE id = ?
-    ''', (request_id,))
-    request = cursor.fetchone()
+    cursor.execute('SELECT project_id, project_code FROM ProjectItem WHERE id = ?', (project_item_id,))
+    project_id, project_code = cursor.fetchone()
     
-    if request:
-        cursor.execute('''
-        UPDATE ExpenditureRequest
-        SET status = 'Rejected'
-        WHERE id = ?
-        ''', (request_id,))
-        
-        cursor.execute('''
-        UPDATE Project
-        SET expected_profit = expected_profit + ?
-        WHERE id = ?
-        ''', (request[1], request[0]))
+    cursor.execute('''
+    INSERT INTO ExpenditureRequest (project_id, project_code, project_item_id, amount, expenditure_type, reason, planned_date, file_name, file_contents)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (project_id, project_code, project_item_id, amount, expenditure_type, description, date, file_name, file_contents))
+    
+    cursor.execute('''
+    UPDATE ProjectItem
+    SET assigned_amount = assigned_amount - ?
+    WHERE id = ?
+    ''', (amount, project_item_id))
     
     conn.commit()
     conn.close()
