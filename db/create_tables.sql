@@ -36,6 +36,7 @@ CREATE TABLE ExpenditureRequest (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     project_id INTEGER NOT NULL,
     project_code TEXT NOT NULL,
+    project_item_id INTEGER NOT NULL,
     amount REAL NOT NULL,
     expenditure_type TEXT NOT NULL,
     reason TEXT,
