@@ -51,8 +51,41 @@ def get_db_connection():
     finally:
         engine.dispose()
 
-# Define the extraction functions
+def process_files(file_paths, sheet_name):
+    """
+    여러 엑셀 파일을 처리하여 프로젝트 정보와 예산 정산 데이터를 추출합니다.
+    
+    :param file_paths: 처리할 엑셀 파일 경로 리스트
+    :param sheet_name: 데이터를 추출할 시트 이름
+    :return: 프로젝트 정보 리스트와 통합된 예산 정산 데이터
+    """
+    project_info_list = []  # 각 파일의 프로젝트 정보를 저장할 리스트
+    budget_settlement_list = []  # 각 파일의 예산 정산 데이터를 저장할 리스트
+    
+    for file_path in file_paths:
+        # 각 엑셀 파일을 pandas DataFrame으로 읽어옵니다
+        df = pd.read_excel(file_path, sheet_name=sheet_name)
+        
+        # 프로젝트 정보와 예산 정산 데이터를 추출합니다
+        project_info = extract_project_info(df)
+        budget_settlement = extract_budget_settlement(df)
+        
+        # 추출한 데이터를 각 리스트에 추가합니다
+        project_info_list.append(project_info)
+        budget_settlement_list.append(budget_settlement)
+    
+    # 모든 파일의 예산 정산 데이터를 하나로 통합합니다
+    combined_budget_settlement = pd.concat(budget_settlement_list, ignore_index=True)
+    
+    return project_info_list, combined_budget_settlement
+
 def extract_project_info(df):
+    """
+    DataFrame에서 프로젝트 정보를 추출합니다.
+    
+    :param df: 프로젝트 정보가 포함된 DataFrame
+    :return: 추출된 프로젝트 정보 딕셔너리
+    """
     project_info = {
         '프로젝트명': df.iloc[1, 3],
         '클라이언트': df.iloc[1, 6],
@@ -64,59 +97,69 @@ def extract_project_info(df):
         '계약종료일': str(df.iloc[2, 11])
     }
     
-    # 날짜 필드에 대해 변환 시도
+    # 날짜 필드에 대해 datetime 변환을 시도합니다
     date_fields = ['작성일', '행사일시', '계약시작일', '계약종료일']
     for field in date_fields:
         try:
+            # 날짜 형식으로 변환 시도
             project_info[field] = pd.to_datetime(project_info[field]).date()
         except:
-            # 변환 실패 시 원본 문자열 유지
+            # 변환 실패 시 원본 문자열을 유지합니다
             pass
     
     return project_info
 
 def extract_budget_settlement(df):
-    # 더 넓은 범위의 데이터를 읽어옵니다.
-    budget_settlement = df.iloc[6:].copy()  # 6번째 행부터 끝까지 모든 데이터를 읽습니다.
+    """
+    DataFrame에서 예산 정산 데이터를 추출하고 정리합니다.
     
-    # 실제 열 수 확인
+    :param df: 예산 정산 데이터가 포함된 DataFrame
+    :return: 정리된 예산 정산 데이터 DataFrame
+    """
+    # 6번째 행부터 끝까지 모든 데이터를 읽어옵니다
+    budget_settlement = df.iloc[6:].copy()
+    
+    # 실제 열 수를 확인합니다
     actual_columns = budget_settlement.columns
     
-    # 새로운 열 이름 정의
+    # 새로운 열 이름을 정의합니다
     new_columns = ['구분', '항목', '내용', '산출내역', 
                    '수량1', '규격1', '수량2', '규격2', 
                    '투입률', '단가', '금액', '예상단가', '예산과목', 
                    '정산금액', '차액', '수익률', '거래업체명', '협력사등록유무', '비고']
     
-    # 실제 열 수에 맞게 열 이름 조정
+    # 실제 열 수에 맞게 열 이름을 조정합니다
     if len(actual_columns) > len(new_columns):
+        # 실제 열이 더 많으면 추가 열 이름을 생성합니다
         additional_columns = [f'추가열_{i+1}' for i in range(len(actual_columns) - len(new_columns))]
         new_columns.extend(additional_columns)
     elif len(actual_columns) < len(new_columns):
+        # 실제 열이 더 적으면 열 이름을 잘라냅니다
         new_columns = new_columns[:len(actual_columns)]
     
+    # 새로운 열 이름을 적용합니다
     budget_settlement.columns = new_columns
     
-    # 통합셀 값 복사
+    # 통합셀 값을 아래 행으로 복사합니다
     for col in budget_settlement.columns:
         budget_settlement[col] = budget_settlement[col].fillna(method='ffill')
     
-    # '소계' 또는 'vat' 키워드가 포함된 행 삭제 (모든 열에서 검사, 대소문자 구분 없이)
-    budget_settlement = budget_settlement[~budget_settlement.apply(lambda row: row.astype.str().str.contains('소계|vat|VAT|간접경비', case=False, regex=True).any(), axis=1)]
+    # '소계' 또는 'vat' 키워드가 포함된 행을 삭제합니다 (대소문자 구분 없이)
+    budget_settlement = budget_settlement[~budget_settlement.apply(lambda row: row.astype(str).str.contains('소계|vat|VAT|간접경비', case=False, regex=True).any(), axis=1)]
     
-    # NaN 값만 있는 행 제거
+    # NaN 값만 있는 행을 제거합니다
     budget_settlement = budget_settlement.dropna(how='all')
     
-    # 숫자 데이터 처리
+    # 숫자 데이터를 처리합니다
     numeric_columns = ['수량1', '수량2', '투입률', '단가', '금액', '예상단가', '정산금액', '차액']
     for col in numeric_columns:
         if col in budget_settlement.columns:
             budget_settlement[col] = pd.to_numeric(budget_settlement[col], errors='coerce')
     
-    # '예상단가' 열이 0이거나 NaN인 행 삭제
+    # '예상단가' 열이 0이거나 NaN인 행을 삭제합니다
     budget_settlement = budget_settlement[budget_settlement['예상단가'].notna() & (budget_settlement['예상단가'] != 0)]
     
-    # 고유 ID 추가
+    # 각 행에 고유 ID를 추가합니다
     budget_settlement['id'] = [str(uuid.uuid4()) for _ in range(len(budget_settlement))]
     
     return budget_settlement
