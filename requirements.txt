@@ -1,4 +1,6 @@
-pandas==2.0.3
-numpy==1.25.2
-Flask==2.3.2
-streamlit==1.25.0
+streamlit
+pandas
+sqlalchemy
+numpy
+plotly
+openpyxl
